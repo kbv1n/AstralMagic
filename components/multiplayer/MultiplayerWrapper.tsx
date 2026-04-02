@@ -1,16 +1,15 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Room } from "colyseus.js"
 import { JoinScreen } from "./JoinScreen"
 import { LobbyScreen } from "./LobbyScreen"
-import { 
-  createRoom, 
-  joinRoom, 
-  leaveRoom, 
-  getCurrentRoom,
+import {
+  createRoom,
+  joinRoom,
+  leaveRoom,
   setCurrentRoom,
-  schemaToGameState 
+  schemaToGameState
 } from "@/lib/colyseus-client"
 import type { GameState } from "@/lib/multiplayer-types"
 
@@ -30,61 +29,67 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [localPlayerId, setLocalPlayerId] = useState<string>("")
   const [error, setError] = useState<string>("")
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
       leaveRoom()
     }
   }, [])
 
-  // Setup room listeners
-  const setupRoomListeners = useCallback((room: Room) => {
-    setLocalPlayerId(room.sessionId)
-    
-    // Initial state
-    room.onStateChange.once((state) => {
-      try {
-        const gs = schemaToGameState(state)
-        setGameState(gs)
-        setConnectionState(gs.phase === "lobby" ? "lobby" : "playing")
-      } catch (err) {
-        console.error("[Colyseus] Failed to parse initial state:", err)
-        setError("Failed to load game state. Please try again.")
-        setConnectionState("disconnected")
-      }
-    })
+  // Process state update (called from both onStateChange and fallback timer)
+  const processState = (state: any) => {
+    try {
+      const gs = schemaToGameState(state)
+      setGameState(gs)
+      setConnectionState(gs.phase === "lobby" ? "lobby" : "playing")
+    } catch (err) {
+      console.error("[Colyseus] Failed to parse state:", err)
+      setError("Failed to load game state: " + (err instanceof Error ? err.message : String(err)))
+      setConnectionState("disconnected")
+    }
+  }
 
-    // State updates
-    room.onStateChange((state) => {
+  // Setup room listeners — no stale closure deps needed
+  const setupRoomListeners = (room: Room) => {
+    setLocalPlayerId(room.sessionId)
+
+    // Listen for all state changes (once fires for initial, regular fires for all subsequent)
+    room.onStateChange.once(processState)
+    room.onStateChange(processState)
+
+    // Fallback: if onStateChange never fires (race condition), read state directly
+    fallbackTimerRef.current = setTimeout(() => {
       try {
-        const gs = schemaToGameState(state)
-        setGameState(gs)
-        if (gs.phase === "playing" && connectionState !== "playing") {
-          setConnectionState("playing")
+        const currentState = room.state
+        if (currentState) {
+          processState(currentState)
         }
       } catch (err) {
-        console.error("[Colyseus] Failed to parse state update:", err)
+        console.error("[Colyseus] Fallback state read failed:", err)
       }
-    })
+    }, 2000)
 
     // Handle disconnect
     room.onLeave((code) => {
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
       console.log("[Colyseus] Left room with code:", code)
       setCurrentRoom(null)
       if (code !== 1000) {
-        // Abnormal disconnect
-        setError("Disconnected from server")
-        setConnectionState("disconnected")
+        setError("Disconnected from server (code " + code + ")")
       }
+      setConnectionState("disconnected")
     })
 
     // Handle errors
     room.onError((code, message) => {
       console.error("[Colyseus] Room error:", code, message)
       setError(message || "Connection error")
+      setConnectionState("disconnected")
     })
-  }, [connectionState])
+  }
 
   // Create a new room
   const handleCreateRoom = async (name: string, maxPlayers: number) => {
@@ -118,11 +123,11 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
 
   // Leave current room
   const handleLeave = async () => {
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     await leaveRoom()
     setGameState(null)
     setLocalPlayerId("")
     setConnectionState("disconnected")
-    // Clear room code from URL
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", window.location.pathname)
     }
@@ -131,10 +136,17 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
   // Render based on connection state
   if (connectionState === "disconnected" || connectionState === "connecting") {
     return (
-      <JoinScreen
-        onCreateRoom={handleCreateRoom}
-        onJoinRoom={handleJoinRoom}
-      />
+      <>
+        {error && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm shadow-lg max-w-sm text-center">
+            {error}
+          </div>
+        )}
+        <JoinScreen
+          onCreateRoom={handleCreateRoom}
+          onJoinRoom={handleJoinRoom}
+        />
+      </>
     )
   }
 
@@ -160,7 +172,7 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
     )
   }
 
-  // Loading state
+  // Loading / transition state
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
