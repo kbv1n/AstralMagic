@@ -31,6 +31,7 @@ import { DamageToastContainer } from '@/components/game/damage-toast'
 
 // Multiplayer
 import { MultiplayerWrapper } from '@/components/multiplayer/MultiplayerWrapper'
+import { MultiplayerBoard } from '@/components/multiplayer/MultiplayerBoard'
 import { GameActions } from '@/lib/colyseus-client'
 import type { GameState as MPGameState } from '@/lib/multiplayer-types'
 
@@ -765,22 +766,12 @@ export default function AstralMagicGame() {
   if (gameMode === 'multi') {
     return (
       <MultiplayerWrapper onSinglePlayer={() => setGameMode('single')}>
-        {({ gameState: mpState, localPlayerId, isMultiplayer }) => (
-          <div className="min-h-screen bg-background flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-xl font-bold text-primary mb-2">Game Started!</p>
-              <p className="text-muted-foreground">Multiplayer game board coming soon...</p>
-              <p className="text-sm text-muted-foreground mt-4">
-                Players: {mpState.players.size} | Turn: {mpState.turn + 1} | Round: {mpState.round}
-              </p>
-              <button 
-                onClick={() => setGameMode('select')}
-                className="mt-6 px-4 py-2 bg-secondary text-foreground rounded-lg hover:bg-secondary/80"
-              >
-                Back to Menu
-              </button>
-            </div>
-          </div>
+        {({ gameState: mpState, localPlayerId }) => (
+          <MultiplayerBoard
+            mpState={mpState}
+            localPlayerId={localPlayerId}
+            onLeave={() => setGameMode('select')}
+          />
         )}
       </MultiplayerWrapper>
     )
