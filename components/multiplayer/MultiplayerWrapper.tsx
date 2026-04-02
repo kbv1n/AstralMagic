@@ -44,19 +44,27 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
     
     // Initial state
     room.onStateChange.once((state) => {
-      const gs = schemaToGameState(state)
-      setGameState(gs)
-      setConnectionState(gs.phase === "lobby" ? "lobby" : "playing")
+      try {
+        const gs = schemaToGameState(state)
+        setGameState(gs)
+        setConnectionState(gs.phase === "lobby" ? "lobby" : "playing")
+      } catch (err) {
+        console.error("[Colyseus] Failed to parse initial state:", err)
+        setError("Failed to load game state. Please try again.")
+        setConnectionState("disconnected")
+      }
     })
 
     // State updates
     room.onStateChange((state) => {
-      const gs = schemaToGameState(state)
-      setGameState(gs)
-      
-      // Transition to playing when game starts
-      if (gs.phase === "playing" && connectionState !== "playing") {
-        setConnectionState("playing")
+      try {
+        const gs = schemaToGameState(state)
+        setGameState(gs)
+        if (gs.phase === "playing" && connectionState !== "playing") {
+          setConnectionState("playing")
+        }
+      } catch (err) {
+        console.error("[Colyseus] Failed to parse state update:", err)
       }
     })
 
