@@ -59,8 +59,6 @@ export default function AstralMagicGame() {
   
   // UI Settings
   const [uiSettings, setUISettings] = useState({
-    cardScale: 1,
-    defaultZoom: 1,
     showZoomPanel: true,
     uiScale: 1,
     glassOpacity: 0.85
@@ -112,7 +110,7 @@ export default function AstralMagicGame() {
   }, [hover])
 
   // Helper functions
-  const getZoom = (pid: number) => zooms[pid] ?? uiSettings.defaultZoom
+  const getZoom = (pid: number) => zooms[pid] ?? 1
   const setZoom = (pid: number, z: number) => setZooms(prev => ({ ...prev, [pid]: Math.max(0.15, Math.min(4.0, z)) }))
   const getPan = (pid: number) => pans[pid] || { x: 0, y: 0 }
   const setPan = (pid: number, pan: { x: number; y: number }) => setPans(prev => ({ ...prev, [pid]: pan }))
@@ -821,8 +819,7 @@ export default function AstralMagicGame() {
       zoom: getZoom(p.pid),
       pan: getPan(p.pid),
       onPan: (newPan: { x: number; y: number }) => setPan(p.pid, newPan),
-      onResetView: () => { setZoom(p.pid, uiSettings.defaultZoom); setPan(p.pid, { x: 0, y: 0 }) },
-      cardScale: uiSettings.cardScale,
+      onResetView: () => { setZoom(p.pid, 1); setPan(p.pid, { x: 0, y: 0 }) },
       onLife: (d: number) => changeLife(p.pid, d),
       onCardMD: (e: React.MouseEvent, iid: string) => onCardMD(e, p.pid, iid),
       onCardRC: (e: React.MouseEvent, iid: string, zone: string) => {
@@ -882,7 +879,6 @@ export default function AstralMagicGame() {
         round={round}
         localPid={localPid}
         hasDrawnInitial={hasDrawnInitial[localPid] || false}
-        zoom={getZoom(localPid)}
         onPassTurn={passTheTurn}
         onSettings={() => setSettingsOpen(true)}
         onLog={() => setLog(o => !o)}

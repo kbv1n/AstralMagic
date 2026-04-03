@@ -19,7 +19,6 @@ interface PlayerMatProps {
   pan: { x: number; y: number }
   onPan: (pan: { x: number; y: number }) => void
   onResetView: () => void
-  cardScale: number
   onLife: (delta: number) => void
   onCardMD: (e: React.MouseEvent, iid: string) => void
   onCardRC: (e: React.MouseEvent, iid: string, zone: string) => void
@@ -42,7 +41,6 @@ export function PlayerMat({
   pan,
   onPan,
   onResetView,
-  cardScale,
   onLife,
   onCardMD,
   onCardRC,
@@ -311,7 +309,7 @@ export function PlayerMat({
             <CardToken
               key={card.iid}
               card={card}
-              scale={cardScale}
+              scale={1}
               onMouseDown={(e) => onCardMD(e, card.iid)}
               onContextMenu={(e) => onCardRC(e, card.iid, 'battlefield')}
               onMouseEnter={() => onHover(card)}

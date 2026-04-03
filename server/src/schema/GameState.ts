@@ -90,7 +90,7 @@ export type ClientMessage =
   | { type: "shuffle_library" }
   | { type: "change_life"; delta: number }
   | { type: "change_poison"; delta: number }
-  | { type: "cmd_damage"; fromPid: number; delta: number }
+  | { type: "cmd_damage"; fromSessionId: string; delta: number }
   | { type: "pass_turn" }
   | { type: "untap_all" }
   | { type: "scry"; count: number }

@@ -47,7 +47,7 @@ function mpCardToInstance(card: MPCardState): CardInstance {
     counters: card.counters > 0 ? { '+1/+1': card.counters } : {},
     x: card.x,
     y: card.y,
-    z: 1,
+    z: 0,
   }
 }
 
@@ -55,7 +55,7 @@ function mpCardToInstance(card: MPCardState): CardInstance {
 function convertToPlayers(
   mpState: MPGameState,
   localPlayerId: string
-): { players: Player[]; localPid: number; turn: number } {
+): { players: Player[]; localPid: number; turn: number; sessionIds: string[] } {
   const playerOrder = mpState.playerOrder
   // Put local player first so they render at the bottom
   const orderedIds = [localPlayerId, ...playerOrder.filter((id) => id !== localPlayerId)]
@@ -100,7 +100,7 @@ function convertToPlayers(
   const activeId = mpState.playerOrder[mpState.turn]
   const turn = Math.max(0, orderedIds.indexOf(activeId))
 
-  return { players, localPid: 0, turn }
+  return { players, localPid: 0, turn, sessionIds: orderedIds }
 }
 
 // Collect all unique card names from the MP state so we can prefetch them
@@ -179,7 +179,7 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
   }, [])
 
   // Derived game state from server
-  const { players, localPid, turn } = convertToPlayers(mpState, localPlayerId)
+  const { players, localPid, turn, sessionIds } = convertToPlayers(mpState, localPlayerId)
   if (players.length === 0) return null
 
   const getZoom = (pid: number) => zooms[pid] ?? 1
@@ -371,7 +371,6 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
         setZoom(p.pid, 1)
         setPan(p.pid, { x: 0, y: 0 })
       },
-      cardScale: 1,
       onLife: (d: number) => {
         if (isLocal(p.pid)) GameActions.changeLife(d)
       },
@@ -432,7 +431,6 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
         round={mpState.round}
         localPid={localPid}
         hasDrawnInitial={true}
-        zoom={getZoom(localPid)}
         onPassTurn={() => GameActions.passTurn()}
         onSettings={() => {}}
         onLog={() => setLog((o) => !o)}
@@ -446,7 +444,9 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
         onDraw={(pid) => {
           if (pid === localPid) GameActions.drawCards(1)
         }}
-        onDraw7={() => {}}
+        onDraw7={(pid) => {
+          if (pid === localPid) GameActions.drawCards(7)
+        }}
         onUntapAll={(pid) => {
           if (pid === localPid) GameActions.untapAll()
         }}
@@ -537,7 +537,11 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
             e.stopPropagation()
             setCtx({ x: e.clientX, y: e.clientY, pid: zv.pid, iid: c.iid, zone: zv.zone })
           }}
-          onScry={() => {}}
+          onScry={(n) => {
+            if (isLocal(zv.pid)) {
+              GameActions.scry(n)
+            }
+          }}
           onMill={(n) => {
             if (isLocal(zv.pid)) GameActions.millCards(n)
             setZV(null)
@@ -560,7 +564,15 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
         <CmdDmgModal
           player={players[dmg]}
           allPlayers={players}
-          onDmg={(_fromPid, d) => GameActions.changeLife(-d)}
+          onDmg={(fromPid, d) => {
+            if (dmg === localPid) {
+              // Local player receiving commander damage — convert pid to sessionId
+              const fromSessionId = sessionIds[fromPid]
+              if (fromSessionId) {
+                GameActions.cmdDamage(fromSessionId, d)
+              }
+            }
+          }}
           onClose={() => setDmg(null)}
         />
       )}

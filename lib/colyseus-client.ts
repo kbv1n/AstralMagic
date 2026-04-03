@@ -98,6 +98,10 @@ export const GameActions = {
   changePoison: (delta: number) => sendMessage("change_poison", { delta }),
   passTurn: () => sendMessage("pass_turn"),
   untapAll: () => sendMessage("untap_all"),
+  cmdDamage: (fromSessionId: string, delta: number) => sendMessage("cmd_damage", { fromSessionId, delta }),
+  scry: (count: number) => sendMessage("scry", { count }),
+  createToken: (name: string, power: number, toughness: number) =>
+    sendMessage("create_token", { name, power, toughness }),
 }
 
 // ---- Plain JSON State Parsing (bypasses schema serialization) ----

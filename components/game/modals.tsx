@@ -478,10 +478,9 @@ export function DiceModal({ mode, onRoll, onFlip, onLog, onClose }: DiceModalPro
 // Settings Modal
 interface UISettingsModalProps {
   settings: {
-    cardScale: number
-    defaultZoom: number
     showZoomPanel: boolean
     uiScale: number
+    glassOpacity: number
   }
   onChange: (settings: UISettingsModalProps['settings']) => void
   players: Player[]
@@ -524,36 +523,6 @@ export function UISettingsModal({ settings, onChange, players, onPlaymat, onClos
             onValueChange={([v]) => update('uiScale', v / 100)}
             min={70}
             max={150}
-            step={5}
-            className="mt-2"
-          />
-        </div>
-
-        {/* Card Scale */}
-        <div className="mb-6">
-          <Label className="text-xs text-muted-foreground">
-            Card Scale: <strong className="text-foreground">{Math.round(s.cardScale * 100)}%</strong>
-          </Label>
-          <Slider
-            value={[s.cardScale * 100]}
-            onValueChange={([v]) => update('cardScale', v / 100)}
-            min={50}
-            max={200}
-            step={5}
-            className="mt-2"
-          />
-        </div>
-
-        {/* Default Zoom */}
-        <div className="mb-6">
-          <Label className="text-xs text-muted-foreground">
-            Default Zoom: <strong className="text-foreground">{Math.round(s.defaultZoom * 100)}%</strong>
-          </Label>
-          <Slider
-            value={[s.defaultZoom * 100]}
-            onValueChange={([v]) => update('defaultZoom', v / 100)}
-            min={30}
-            max={300}
             step={5}
             className="mt-2"
           />

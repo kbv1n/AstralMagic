@@ -229,6 +229,42 @@ export class GameRoom extends Room<GameState> {
       case "untap_all":
         this.untapAll(player)
         break
+
+      case "cmd_damage": {
+        // message.fromSessionId is the session ID of the attacking commander's owner
+        // Apply damage to the receiving player (the message sender)
+        const fromSid = message.fromSessionId
+        if (fromSid) {
+          const dmgEntry = player.cmdDamage.get(fromSid)
+          if (dmgEntry) {
+            dmgEntry.dealt = Math.max(0, dmgEntry.dealt + message.delta)
+          }
+          // Also reduce life
+          player.life -= message.delta
+          const fromPlayer = this.state.players.get(fromSid)
+          this.addLog(`${player.name} took ${message.delta} commander dmg from ${fromPlayer?.name || '?'} (total: ${dmgEntry?.dealt || 0})`)
+        }
+        break
+      }
+
+      case "scry": {
+        // Scry: client will handle reordering via move_card messages
+        // Just log it
+        this.addLog(`${player.name} is scrying ${message.count}`)
+        break
+      }
+
+      case "create_token": {
+        const token = new CardState()
+        token.iid = uid()
+        token.cardId = `${message.name} (${message.power}/${message.toughness})`
+        token.zone = "battlefield"
+        token.x = 30 + Math.random() * 30
+        token.y = 20 + Math.random() * 30
+        player.battlefield.push(token)
+        this.addLog(`${player.name} created token: ${message.name} ${message.power}/${message.toughness}`)
+        break
+      }
     }
 
     // Broadcast updated state after every mutation
