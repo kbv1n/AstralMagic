@@ -152,13 +152,14 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
   const handDragRef = useRef<{ pid: number; iid: string } | null>(null)
   const dragRef = useRef<boolean | null>(null)
   const fetchedRef = useRef<Set<string>>(new Set())
+  const [scryfallLoaded, setScryfallLoaded] = useState(0)
 
-  // Fetch Scryfall data for any new card names in the state
+  // Fetch Scryfall data for any new card names in the state, then re-render
   useEffect(() => {
     const names = collectCardNames(mpState).filter((n) => !fetchedRef.current.has(n))
     if (names.length === 0) return
     names.forEach((n) => fetchedRef.current.add(n))
-    fetchScryfall(names)
+    fetchScryfall(names).then(() => setScryfallLoaded((n) => n + 1))
   }, [mpState])
 
   // Track mouse for the hover card preview

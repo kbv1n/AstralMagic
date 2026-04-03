@@ -201,7 +201,7 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
                     value={deckText}
                     onChange={(e) => setDeckText(e.target.value)}
                     placeholder={`1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n1 Command Tower\n1 Llanowar Elves\n1 Swords to Plowshares\n...`}
-                    className="min-h-[180px] font-mono text-sm bg-background/50 mb-3"
+                    className="min-h-[180px] max-h-[280px] font-mono text-sm bg-background/50 mb-3 resize-none overflow-y-auto break-all whitespace-pre-wrap"
                   />
                   <Button
                     onClick={handlePasteDeck}

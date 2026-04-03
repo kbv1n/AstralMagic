@@ -52,9 +52,10 @@ export function CardToken({
         className={cn(
           'w-full h-full rounded-md overflow-hidden',
           'ring-2 transition-all duration-200',
-          card.tapped 
-            ? 'ring-amber-500 shadow-[0_0_12px_rgba(251,191,36,0.4)]' 
-            : 'ring-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.5)]'
+          card.tapped
+            ? 'ring-amber-500 shadow-[0_0_12px_rgba(251,191,36,0.4)]'
+            : 'ring-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.5)]',
+          !img && !card.faceDown && 'bg-zinc-800 border border-zinc-600'
         )}
       >
         {card.faceDown ? (
