@@ -52,7 +52,8 @@ export interface GameState {
 }
 
 // Client message types
-export type ClientMessage = 
+export type ClientMessage =
+  | { type: "request_state" }
   | { type: "set_name"; name: string }
   | { type: "set_color"; colorIndex: number }
   | { type: "set_playmat"; url: string }

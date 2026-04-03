@@ -9,7 +9,8 @@ import {
   joinRoom,
   leaveRoom,
   setCurrentRoom,
-  schemaToGameState
+  parseGameState,
+  GameActions,
 } from "@/lib/colyseus-client"
 import type { GameState } from "@/lib/multiplayer-types"
 
@@ -29,56 +30,40 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [localPlayerId, setLocalPlayerId] = useState<string>("")
   const [error, setError] = useState<string>("")
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const roomRef = useRef<Room | null>(null)
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
       leaveRoom()
     }
   }, [])
 
-  // Process state update (called from both onStateChange and fallback timer)
-  const processState = (state: any) => {
-    try {
-      const gs = schemaToGameState(state)
-      setGameState(gs)
-      setConnectionState(gs.phase === "lobby" ? "lobby" : "playing")
-    } catch (err) {
-      console.error("[Colyseus] Failed to parse state:", err)
-      setError("Failed to load game state: " + (err instanceof Error ? err.message : String(err)))
-      setConnectionState("disconnected")
-    }
-  }
-
-  // Setup room listeners — no stale closure deps needed
-  const setupRoomListeners = (room: Room) => {
+  // Setup room listeners using plain JSON messages (bypasses schema serialization)
+  const setupRoom = (room: Room) => {
+    roomRef.current = room
     setLocalPlayerId(room.sessionId)
 
-    // Listen for all state changes (once fires for initial, regular fires for all subsequent)
-    room.onStateChange.once(processState)
-    room.onStateChange(processState)
-
-    // Fallback: if onStateChange never fires (race condition), read state directly
-    fallbackTimerRef.current = setTimeout(() => {
+    // Listen for plain JSON state updates from server
+    room.onMessage("state_sync", (data: any) => {
       try {
-        const currentState = room.state
-        if (currentState) {
-          processState(currentState)
-        }
+        const gs = parseGameState(data)
+        setGameState(gs)
+        setConnectionState(gs.phase === "lobby" ? "lobby" : "playing")
+        setError("")
       } catch (err) {
-        console.error("[Colyseus] Fallback state read failed:", err)
+        console.error("[Colyseus] Failed to parse state_sync:", err)
+        setError("Failed to parse game state")
       }
-    }, 2000)
+    })
 
     // Handle disconnect
     room.onLeave((code) => {
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
-      console.log("[Colyseus] Left room with code:", code)
+      console.log("[Colyseus] Left room, code:", code)
+      roomRef.current = null
       setCurrentRoom(null)
       if (code !== 1000) {
-        setError("Disconnected from server (code " + code + ")")
+        setError("Disconnected from server")
       }
       setConnectionState("disconnected")
     })
@@ -89,6 +74,9 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
       setError(message || "Connection error")
       setConnectionState("disconnected")
     })
+
+    // Request initial state (server responds with state_sync message)
+    room.send("request_state", {})
   }
 
   // Create a new room
@@ -97,7 +85,7 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
     setConnectionState("connecting")
     try {
       const room = await createRoom(name, maxPlayers)
-      setupRoomListeners(room)
+      setupRoom(room)
     } catch (err) {
       console.error("[Colyseus] Create room error:", err)
       setError(err instanceof Error ? err.message : "Failed to create room")
@@ -112,7 +100,7 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
     setConnectionState("connecting")
     try {
       const room = await joinRoom(roomId, name)
-      setupRoomListeners(room)
+      setupRoom(room)
     } catch (err) {
       console.error("[Colyseus] Join room error:", err)
       setError(err instanceof Error ? err.message : "Failed to join room")
@@ -123,8 +111,8 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
 
   // Leave current room
   const handleLeave = async () => {
-    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     await leaveRoom()
+    roomRef.current = null
     setGameState(null)
     setLocalPlayerId("")
     setConnectionState("disconnected")
@@ -138,8 +126,14 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
     return (
       <>
         {error && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm shadow-lg max-w-sm text-center">
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm shadow-lg max-w-md text-center">
             {error}
+            <button
+              onClick={() => setError("")}
+              className="ml-3 underline opacity-80 hover:opacity-100"
+            >
+              Dismiss
+            </button>
           </div>
         )}
         <JoinScreen
@@ -166,7 +160,7 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
         {children({
           gameState,
           localPlayerId,
-          isMultiplayer: true
+          isMultiplayer: true,
         })}
       </>
     )
@@ -177,7 +171,10 @@ export function MultiplayerWrapper({ children, onSinglePlayer }: MultiplayerWrap
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-muted-foreground">Connecting...</p>
+        <p className="text-muted-foreground">Connecting to server...</p>
+        <p className="text-xs text-muted-foreground/60 mt-2">
+          Free server may take up to 30 seconds to wake up
+        </p>
         {error && <p className="text-destructive text-sm mt-2">{error}</p>}
       </div>
     </div>

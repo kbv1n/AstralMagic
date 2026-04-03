@@ -6,12 +6,8 @@ import type { GameState, PlayerState, CardState, ClientMessage } from "./multipl
 // Server URL configuration
 const getServerUrl = () => {
   if (typeof window === "undefined") return ""
-  
-  // Use environment variable in production, localhost in development
   const serverUrl = process.env.NEXT_PUBLIC_COLYSEUS_URL
   if (serverUrl) return serverUrl
-  
-  // Default to localhost for development
   return "ws://localhost:2567"
 }
 
@@ -39,9 +35,9 @@ export function setCurrentRoom(room: Room | null) {
 // Create a new game room
 export async function createRoom(playerName: string, maxPlayers: number = 4): Promise<Room> {
   const client = getClient()
-  const room = await client.create("game", { 
+  const room = await client.create("game", {
     name: playerName,
-    maxPlayers 
+    maxPlayers
   })
   setCurrentRoom(room)
   return room
@@ -77,6 +73,7 @@ export function sendMessage<T extends ClientMessage["type"]>(
 
 // Utility functions for common game actions
 export const GameActions = {
+  requestState: () => sendMessage("request_state"),
   setName: (name: string) => sendMessage("set_name", { name }),
   setColor: (colorIndex: number) => sendMessage("set_color", { colorIndex }),
   setPlaymat: (url: string) => sendMessage("set_playmat", { url }),
@@ -84,15 +81,15 @@ export const GameActions = {
   ready: () => sendMessage("ready"),
   unready: () => sendMessage("unready"),
   startGame: () => sendMessage("start_game"),
-  
+
   // Card actions
-  moveCard: (iid: string, toZone: string, x?: number, y?: number, index?: number) => 
+  moveCard: (iid: string, toZone: string, x?: number, y?: number, index?: number) =>
     sendMessage("move_card", { iid, toZone, x, y, index }),
   tapCard: (iid: string) => sendMessage("tap_card", { iid }),
   untapCard: (iid: string) => sendMessage("untap_card", { iid }),
   flipCard: (iid: string) => sendMessage("flip_card", { iid }),
   addCounter: (iid: string, delta: number) => sendMessage("add_counter", { iid, delta }),
-  
+
   // Player actions
   drawCards: (count: number) => sendMessage("draw_cards", { count }),
   millCards: (count: number) => sendMessage("mill_cards", { count }),
@@ -103,84 +100,52 @@ export const GameActions = {
   untapAll: () => sendMessage("untap_all"),
 }
 
-// Helper to convert Colyseus MapSchema to regular Map/Object
-export function schemaToPlayers(playersSchema: any): Map<string, PlayerState> {
+// ---- Plain JSON State Parsing (bypasses schema serialization) ----
+
+export function parseGameState(data: any): GameState {
   const players = new Map<string, PlayerState>()
-  
-  if (!playersSchema) return players
-  
-  // Colyseus MapSchema iteration
-  playersSchema.forEach((player: any, odId: string) => {
-    players.set(odId, {
-      odId: player.odId,
-      name: player.name,
-      pid: player.pid,
-      life: player.life,
-      poison: player.poison,
-      colorIndex: player.colorIndex,
-      playmatUrl: player.playmatUrl,
-      ready: player.ready,
-      connected: player.connected,
-      deckText: player.deckText,
-      battlefield: arraySchemaToArray(player.battlefield),
-      hand: arraySchemaToArray(player.hand),
-      library: arraySchemaToArray(player.library),
-      graveyard: arraySchemaToArray(player.graveyard),
-      exile: arraySchemaToArray(player.exile),
-      commandZone: arraySchemaToArray(player.commandZone),
-      cmdDamage: mapSchemaToMap(player.cmdDamage),
-    })
-  })
-  
-  return players
-}
 
-function arraySchemaToArray(arraySchema: any): CardState[] {
-  if (!arraySchema) return []
-  const result: CardState[] = []
-  arraySchema.forEach((item: any) => {
-    result.push({
-      iid: item.iid,
-      cardId: item.cardId,
-      x: item.x,
-      y: item.y,
-      tapped: item.tapped,
-      faceDown: item.faceDown,
-      counters: item.counters,
-      zone: item.zone,
-    })
-  })
-  return result
-}
+  if (data.players) {
+    for (const [id, p] of Object.entries(data.players)) {
+      const raw = p as any
+      const cmdDamage = new Map<string, { dealt: number }>()
+      if (raw.cmdDamage) {
+        for (const [k, v] of Object.entries(raw.cmdDamage)) {
+          cmdDamage.set(k, v as { dealt: number })
+        }
+      }
+      players.set(id, {
+        odId: raw.odId,
+        name: raw.name,
+        pid: raw.pid,
+        life: raw.life,
+        poison: raw.poison,
+        colorIndex: raw.colorIndex,
+        playmatUrl: raw.playmatUrl,
+        ready: raw.ready,
+        connected: raw.connected,
+        deckText: raw.deckText,
+        battlefield: raw.battlefield || [],
+        hand: raw.hand || [],
+        library: raw.library || [],
+        graveyard: raw.graveyard || [],
+        exile: raw.exile || [],
+        commandZone: raw.commandZone || [],
+        cmdDamage,
+      })
+    }
+  }
 
-function mapSchemaToMap(mapSchema: any): Map<string, { dealt: number }> {
-  const result = new Map<string, { dealt: number }>()
-  if (!mapSchema) return result
-  mapSchema.forEach((value: any, key: string) => {
-    result.set(key, { dealt: value.dealt })
-  })
-  return result
-}
-
-function arraySchemaToStrings(arraySchema: any): string[] {
-  if (!arraySchema) return []
-  const result: string[] = []
-  arraySchema.forEach((item: any) => result.push(item))
-  return result
-}
-
-// Convert full game state from schema
-export function schemaToGameState(state: any): GameState {
   return {
-    phase: state.phase as GameState["phase"],
-    roomId: state.roomId,
-    hostId: state.hostId,
-    maxPlayers: state.maxPlayers,
-    turn: state.turn,
-    round: state.round,
-    players: schemaToPlayers(state.players),
-    takenColors: arraySchemaToStrings(state.takenColors),
-    log: arraySchemaToStrings(state.log),
-    playerOrder: arraySchemaToStrings(state.playerOrder),
+    phase: data.phase as GameState["phase"],
+    roomId: data.roomId || "",
+    hostId: data.hostId || "",
+    maxPlayers: data.maxPlayers || 4,
+    turn: data.turn || 0,
+    round: data.round || 1,
+    players,
+    takenColors: data.takenColors || [],
+    log: data.log || [],
+    playerOrder: data.playerOrder || [],
   }
 }

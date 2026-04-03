@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { 
+import {
   Swords, Copy, Check, Play, LogOut, Image as ImageIcon,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, ExternalLink
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PlayerSlot } from "./PlayerSlot"
 import { GameActions } from "@/lib/colyseus-client"
 import type { GameState, PlayerState } from "@/lib/multiplayer-types"
+
+const MOXFIELD_URL = "https://moxfield.com/decks/public?q=eyJmb3JtYXQiOiJjb21tYW5kZXJQcmVjb25zIn0%3D"
 
 interface LobbyScreenProps {
   gameState: GameState
@@ -25,19 +27,19 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
   const [playmatUrl, setPlaymatUrl] = useState("")
   const [copied, setCopied] = useState(false)
   const [showDeckInput, setShowDeckInput] = useState(true)
-  
+
   const localPlayer = gameState.players.get(localPlayerId)
   const isHost = gameState.hostId === localPlayerId
   const players = Array.from(gameState.players.values())
     .sort((a, b) => a.pid - b.pid)
-  
+
   const allReady = players.length >= 2 && players.every(p => p.ready)
-  const canReady = localPlayer && 
-    localPlayer.colorIndex >= 0 && 
+  const canReady = localPlayer &&
+    localPlayer.colorIndex >= 0 &&
     (localPlayer.library?.length || 0) > 0
 
   // Generate shareable link
-  const shareLink = typeof window !== "undefined" 
+  const shareLink = typeof window !== "undefined"
     ? `${window.location.origin}?room=${gameState.roomId}`
     : ""
 
@@ -86,10 +88,12 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
             <Swords className="w-8 h-8 text-primary" />
             <div>
               <h1 className="text-xl font-bold text-primary">AstralMagic</h1>
-              <p className="text-xs text-muted-foreground">Lobby: {gameState.roomId}</p>
+              <p className="text-xs text-muted-foreground">
+                Room: <span className="font-mono select-all">{gameState.roomId}</span>
+              </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* Copy Link Button */}
             <Button
@@ -106,11 +110,11 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  Copy Link
+                  Invite Link
                 </>
               )}
             </Button>
-            
+
             {/* Leave Button */}
             <Button
               onClick={onLeave}
@@ -150,7 +154,7 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
                   onColorChange={player.odId === localPlayerId ? GameActions.setColor : undefined}
                 />
               ))}
-              
+
               {/* Empty Slots */}
               {Array.from({ length: gameState.maxPlayers - players.length }).map((_, i) => (
                 <div
@@ -166,22 +170,38 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
           {/* Right Column - Deck & Settings */}
           <div className="space-y-4">
             {/* Deck Input Section */}
-            <div className="liquid-glass-strong rounded-xl p-4">
-              <button 
+            <div className="rounded-xl border border-border/50 bg-card p-4">
+              <button
                 onClick={() => setShowDeckInput(!showDeckInput)}
                 className="w-full flex items-center justify-between mb-3"
               >
-                <h3 className="font-bold">Load Your Deck</h3>
+                <h3 className="font-bold">Import Your Deck</h3>
                 {showDeckInput ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
-              
+
               {showDeckInput && (
                 <>
+                  {/* Moxfield Link */}
+                  <a
+                    href={MOXFIELD_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm"
+                  >
+                    <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                    <span>Browse Commander precon decks on Moxfield</span>
+                  </a>
+
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Paste your deck list below. Use the format: <code className="bg-muted px-1 rounded">1 Card Name</code>.
+                    Add <code className="bg-muted px-1 rounded">*CMDR*</code> after commander names.
+                  </p>
+
                   <Textarea
                     value={deckText}
                     onChange={(e) => setDeckText(e.target.value)}
-                    placeholder={`Paste your deck list here...\n\nFormat:\n1 Sol Ring\n1 Command Tower\n1 Llanowar Elves *CMDR*`}
-                    className="min-h-[200px] font-mono text-sm bg-background/50 mb-3"
+                    placeholder={`1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n1 Command Tower\n1 Llanowar Elves\n1 Swords to Plowshares\n...`}
+                    className="min-h-[180px] font-mono text-sm bg-background/50 mb-3"
                   />
                   <Button
                     onClick={handlePasteDeck}
@@ -190,10 +210,13 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
                   >
                     Load Deck
                   </Button>
-                  
+
                   {localPlayer && (localPlayer.library?.length || 0) > 0 && (
                     <p className="text-sm text-primary mt-2 text-center">
-                      Deck loaded: {localPlayer.library?.length || 0} cards + {localPlayer.commandZone?.length || 0} commander(s)
+                      Deck loaded: {localPlayer.library?.length || 0} cards
+                      {(localPlayer.commandZone?.length || 0) > 0 && (
+                        <> + {localPlayer.commandZone?.length} commander(s)</>
+                      )}
                     </p>
                   )}
                 </>
@@ -201,7 +224,7 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
             </div>
 
             {/* Playmat Section */}
-            <div className="liquid-glass rounded-xl p-4">
+            <div className="rounded-xl border border-border/50 bg-card p-4">
               <h3 className="font-bold mb-3 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
                 Custom Playmat (Optional)
@@ -240,7 +263,7 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
                       Ready Up
                     </>
                   ) : (
-                    "Select color and load deck to ready"
+                    "Select a color and load a deck to ready up"
                   )}
                 </Button>
               ) : (
@@ -259,8 +282,8 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
                   disabled={!allReady}
                   className={cn(
                     "w-full h-14 text-lg font-bold",
-                    allReady 
-                      ? "bg-[#fb8f23] hover:bg-[#fb8f23]/90 text-white" 
+                    allReady
+                      ? "bg-[#fb8f23] hover:bg-[#fb8f23]/90 text-white"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
