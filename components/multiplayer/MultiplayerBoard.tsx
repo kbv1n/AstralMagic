@@ -13,7 +13,7 @@ import { ContextMenu } from '@/components/game/context-menu'
 import { ZoneViewer } from '@/components/game/zone-viewer'
 import { CardImage } from '@/components/game/card-image'
 import { ManaSymbols, OracleText } from '@/components/game/mana-symbols'
-import { CounterModal, CmdDmgModal, DiceModal } from '@/components/game/modals'
+import { CounterModal, CmdDmgModal, DiceModal, UISettingsModal } from '@/components/game/modals'
 
 // Convert a single MP card to a CardInstance for the UI
 function mpCardToInstance(card: MPCardState): CardInstance {
@@ -142,6 +142,8 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
   const [dmg, setDmg] = useState<number | null>(null)
   const [logOpen, setLog] = useState(true)
   const [diceModal, setDiceModal] = useState<'dice' | 'coin' | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [uiSettings, setUISettings] = useState({ showZoomPanel: true, uiScale: 1, glassOpacity: 0.85 })
   const [zooms, setZooms] = useState<Record<number, number>>({})
   const [pans, setPans] = useState<Record<number, { x: number; y: number }>>({})
   const [handDragOver, setHandDragOver] = useState<number | null>(null)
@@ -266,20 +268,17 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
     handDragRef.current = { pid, iid }
     setHandGhost({ card, x: e.clientX, y: e.clientY })
 
-    const findBFPid = (el: Element | null): number | null => {
-      let t = el
-      while (t) {
-        if (t instanceof HTMLElement && t.dataset.bfpid != null)
-          return parseInt(t.dataset.bfpid)
-        t = t.parentElement
-      }
-      return null
-    }
+    const getBFRect = () => outerRefs.current[localPid]?.current?.getBoundingClientRect() ?? null
 
     const onMove = (ev: MouseEvent) => {
       setHandGhost((prev) => (prev ? { ...prev, x: ev.clientX, y: ev.clientY } : null))
-      const el = document.elementFromPoint(ev.clientX, ev.clientY)
-      setHandDragOver(el ? findBFPid(el) : null)
+      const rect = getBFRect()
+      if (rect && ev.clientX >= rect.left && ev.clientX <= rect.right &&
+          ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
+        setHandDragOver(localPid)
+      } else {
+        setHandDragOver(null)
+      }
     }
 
     const onUp = (ev: MouseEvent) => {
@@ -288,17 +287,11 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
 
       const hd = handDragRef.current
       if (hd && isLocal(hd.pid)) {
-        const el = document.elementFromPoint(ev.clientX, ev.clientY)
-        const dropPid = el ? findBFPid(el) : null
-        if (dropPid !== null) {
-          const bfEl = document.querySelector(`[data-bfpid="${dropPid}"]`)
-          let dropX = 10 + Math.random() * 40
-          let dropY = 10 + Math.random() * 40
-          if (bfEl) {
-            const rect = bfEl.getBoundingClientRect()
-            dropX = Math.max(2, Math.min(90, ((ev.clientX - rect.left) / rect.width) * 100))
-            dropY = Math.max(2, Math.min(88, ((ev.clientY - rect.top) / rect.height) * 100))
-          }
+        const rect = getBFRect()
+        if (rect && ev.clientX >= rect.left && ev.clientX <= rect.right &&
+            ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
+          const dropX = Math.max(2, Math.min(90, ((ev.clientX - rect.left) / rect.width) * 100))
+          const dropY = Math.max(2, Math.min(88, ((ev.clientY - rect.top) / rect.height) * 100))
           GameActions.moveCard(hd.iid, 'battlefield', dropX, dropY)
         }
       }
@@ -432,7 +425,7 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
         localPid={localPid}
         hasDrawnInitial={true}
         onPassTurn={() => GameActions.passTurn()}
-        onSettings={() => {}}
+        onSettings={() => setSettingsOpen(true)}
         onLog={() => setLog((o) => !o)}
         onDice={() => setDiceModal('dice')}
         onCoin={() => setDiceModal('coin')}
@@ -538,13 +531,14 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
             setCtx({ x: e.clientX, y: e.clientY, pid: zv.pid, iid: c.iid, zone: zv.zone })
           }}
           onScry={(n) => {
-            if (isLocal(zv.pid)) {
-              GameActions.scry(n)
-            }
+            if (isLocal(zv.pid)) GameActions.scry(n)
           }}
           onMill={(n) => {
             if (isLocal(zv.pid)) GameActions.millCards(n)
             setZV(null)
+          }}
+          onShuffle={() => {
+            if (isLocal(zv.pid)) GameActions.shuffleLibrary()
           }}
         />
       )}
@@ -585,6 +579,17 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
           onFlip={() => (Math.random() < 0.5 ? 'Heads' : 'Tails')}
           onLog={() => {}}
           onClose={() => setDiceModal(null)}
+        />
+      )}
+
+      {/* Settings modal */}
+      {settingsOpen && (
+        <UISettingsModal
+          settings={uiSettings}
+          onChange={setUISettings}
+          players={players}
+          onPlaymat={() => {}}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
 

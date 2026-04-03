@@ -90,16 +90,24 @@ export function PlayerMat({
     return 1
   }
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault()
+  // Use native wheel listener with passive:false so preventDefault() works for zoom
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+  useEffect(() => {
     const el = outerScrollRef?.current
-    const rect = el?.getBoundingClientRect() || { left: 0, top: 0 }
-    const mx = e.clientX - rect.left
-    const my = e.clientY - rect.top
-    const delta = e.deltaY > 0 ? -0.1 : 0.1
-    const newZoom = Math.max(0.15, Math.min(4.0, zoom + delta))
-    onZoomWithScroll(newZoom, mx, my)
-  }
+    if (!el) return
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      const newZoom = Math.max(0.15, Math.min(4.0, zoomRef.current + delta))
+      onZoomWithScroll(newZoom, mx, my)
+    }
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [outerScrollRef, onZoomWithScroll])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && spaceDown)) {
@@ -280,7 +288,6 @@ export function PlayerMat({
           'flex-1 overflow-hidden z-1 relative',
           isPanning ? 'cursor-grabbing' : spaceDown ? 'cursor-grab' : 'cursor-default'
         )}
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

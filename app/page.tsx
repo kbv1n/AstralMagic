@@ -972,6 +972,7 @@ export default function AstralMagicGame() {
           }}
           onScry={(n) => openScry(zv.pid, n)}
           onMill={(n) => { millCards(zv.pid, n); setZV(null) }}
+          onShuffle={() => { shuffleLib(zv.pid); setZV(null) }}
         />
       )}
 

@@ -6,7 +6,7 @@ import type { Player, CardInstance, ZoneType } from '@/lib/game-types'
 import { CardImage, CardBack } from './card-image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { X, Eye, Swords, Hand, Skull, Sparkles, Search } from 'lucide-react'
+import { X, Eye, Swords, Hand, Skull, Sparkles, Search, Shuffle } from 'lucide-react'
 
 interface ZoneViewerProps {
   player: Player
@@ -18,6 +18,7 @@ interface ZoneViewerProps {
   onRC: (e: React.MouseEvent, card: CardInstance) => void
   onScry: (n: number) => void
   onMill: (n: number) => void
+  onShuffle?: () => void
 }
 
 const ZONE_LABELS: Record<string, string> = {
@@ -37,7 +38,8 @@ export function ZoneViewer({
   onHL,
   onRC,
   onScry,
-  onMill
+  onMill,
+  onShuffle,
 }: ZoneViewerProps) {
   const [query, setQuery] = useState('')
   const [millN, setMillN] = useState('')
@@ -106,10 +108,24 @@ export function ZoneViewer({
 
           {/* Library actions */}
           {isLib && (
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center flex-wrap">
+              {/* Shuffle */}
+              {onShuffle && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs text-emerald-400/80 border-emerald-400/30"
+                  onClick={() => { onShuffle(); onClose() }}
+                >
+                  <Shuffle className="w-3 h-3 mr-1" /> Shuffle
+                </Button>
+              )}
+
               {showScryInput ? (
                 <div className="flex items-center gap-1">
                   <Input
+                    id="zone-scry-n"
+                    name="zone-scry-n"
                     autoFocus
                     value={scryN}
                     onChange={(e) => setScryN(e.target.value)}
@@ -121,9 +137,9 @@ export function ZoneViewer({
                     className="w-12 h-7 text-xs"
                   />
                   <Button size="sm" className="h-7" onClick={doScry}>Go</Button>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     className="h-7 w-7 p-0"
                     onClick={() => setShowScryInput(false)}
                   >
@@ -134,7 +150,7 @@ export function ZoneViewer({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 text-xs text-violet-400 border-violet-400/40"
+                  className="h-7 text-xs text-violet-400/80 border-violet-400/30"
                   onClick={() => { setShowScryInput(true); setShowMillInput(false) }}
                 >
                   <Eye className="w-3 h-3 mr-1" /> Scry N
@@ -144,6 +160,8 @@ export function ZoneViewer({
               {showMillInput ? (
                 <div className="flex items-center gap-1">
                   <Input
+                    id="zone-mill-n"
+                    name="zone-mill-n"
                     autoFocus
                     value={millN}
                     onChange={(e) => setMillN(e.target.value)}
@@ -154,12 +172,12 @@ export function ZoneViewer({
                     placeholder={`1-${cards.length}`}
                     className="w-12 h-7 text-xs"
                   />
-                  <Button size="sm" className="h-7 bg-red-500 hover:bg-red-600" onClick={doMill}>
+                  <Button size="sm" className="h-7 bg-red-500/80 hover:bg-red-500" onClick={doMill}>
                     Go
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     className="h-7 w-7 p-0"
                     onClick={() => setShowMillInput(false)}
                   >
@@ -170,7 +188,7 @@ export function ZoneViewer({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 text-xs text-red-400 border-red-400/40"
+                  className="h-7 text-xs text-red-400/80 border-red-400/30"
                   onClick={() => { setShowMillInput(true); setShowScryInput(false) }}
                 >
                   <Skull className="w-3 h-3 mr-1" /> Mill N
@@ -183,6 +201,8 @@ export function ZoneViewer({
           <div className="relative ml-auto">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
             <Input
+              id="zone-search"
+              name="zone-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search..."
