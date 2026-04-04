@@ -283,7 +283,10 @@ export function PlayerMat({
 
       {/* Battlefield */}
       <div
-        ref={(el) => { outerScrollRef.current = el }}
+        ref={(el) => { 
+        console.log("[v0] PlayerMat ref callback - el:", el, "player.pid:", player.pid)
+        outerScrollRef.current = el 
+      }}
         className={cn(
           'flex-1 overflow-hidden z-1 relative',
           isPanning ? 'cursor-grabbing' : spaceDown ? 'cursor-grab' : 'cursor-default'
