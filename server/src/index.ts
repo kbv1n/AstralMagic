@@ -1,4 +1,4 @@
-import { Server, matchMaker } from "colyseus"
+import { Server } from "colyseus"
 import { WebSocketTransport } from "@colyseus/ws-transport"
 import { createServer } from "http"
 import express from "express"
@@ -25,7 +25,7 @@ app.get("/health", (req, res) => {
 // List available rooms
 app.get("/rooms", async (req, res) => {
   try {
-    const rooms = await matchMaker.query({ name: "game" })
+    const rooms = await gameServer.matchMaker.query({ name: "game" })
     res.json(rooms.map((room: any) => ({
       roomId: room.roomId,
       clients: room.clients,

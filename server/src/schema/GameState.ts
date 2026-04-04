@@ -1,4 +1,4 @@
-import { Schema, type, MapSchema, ArraySchema } from "@colyseus/schema"
+import { Schema, type, MapSchema, ArraySchema } from "colyseus"
 
 // Card instance state - mirrors frontend CardInstance
 export class CardState extends Schema {

@@ -1,5 +1,5 @@
 import { Room, Client } from "colyseus"
-import { ArraySchema, MapSchema } from "@colyseus/schema"
+import { Schema, type, ArraySchema, MapSchema } from "colyseus"
 import { GameState, PlayerState, CardState, CommanderDamage, ClientMessage } from "../schema/GameState"
 
 // Fisher-Yates shuffle
@@ -44,7 +44,7 @@ export class GameRoom extends Room<GameState> {
     if (this.state.phase !== "lobby") {
       // Allow reconnection
       const existingPlayer = Array.from(this.state.players.values()).find(
-        p => p.name === options.name && !p.connected
+        (p: PlayerState) => p.name === options.name && !p.connected
       )
       if (existingPlayer) {
         existingPlayer.odId = client.sessionId
