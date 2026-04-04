@@ -156,6 +156,12 @@ export class GameRoom extends Room<GameState> {
         player.playmatUrl = message.url
         break
 
+      case "log_action":
+        if (message.msg && typeof message.msg === 'string') {
+          this.addLog(message.msg)
+        }
+        break
+
       case "paste_deck":
         player.deckText = message.deckText
         // Parse deck and create cards
@@ -412,6 +418,57 @@ export class GameRoom extends Room<GameState> {
         if (otherId !== player.odId) {
           player.cmdDamage.set(otherId, new CommanderDamage())
         }
+      }
+    }
+
+    // Auto-assign packaged playmats to players who haven't selected one
+    const PACKAGED_PLAYMAT_URLS = [
+      '/textures/bonsai-ozgmx-drgl-lrg.webp',
+      '/textures/bsktbll-org-drgl-xxl-drgl-thumb_1778590b-81f5-43b9-9bd8-54e11cb8c081.webp',
+      '/textures/cstl1-org-drgl-xxl-drgl-thumb.jpg',
+      '/textures/cstl7-org-drgl-xxl-drgl-thumb.jpg',
+      '/textures/cwboy-org-drgl-xxl-drgl-thumb_72779e86-7133-4920-a286-bfdc318f9000.jpg',
+      '/textures/drgnebula-org-drgl-xxl-drgl-thumb.webp',
+      '/textures/drgwrath-org-stbl-xxl-stbl-thumb.jpg',
+      '/textures/gulp-org-drgl-xxl-drgl-thumb.jpg',
+      '/textures/hole-org-drgl-xxl-drgl-thumb.webp',
+      '/textures/jeanleon-org-drgl-lrg.jpg',
+      '/textures/landerspoint-org-drgl-lrg.jpg',
+      '/textures/lildog-org-drgl-xxl-drgl-thumb.jpg',
+      '/textures/map-purp-drgl-xxl-drgl-thumb.webp',
+      '/textures/phaeton-org-drgl-lrg_c3422eda-a0ce-4716-a69d-05131c845fa7.jpg',
+      '/textures/pless-org-drgl-lrg_8eedb66d-7965-4cd8-a187-9a1960f549e6.jpg',
+      '/textures/satomitgr-org-drgl-xxl-drgl-thumb.webp',
+      '/textures/scrltpwr-org-drgl-xxl-drgl-thumb_6a2a147b-9626-456e-b9d4-22fe8ed2ac89.jpg',
+      '/textures/snvda-org-drgl-xxl-drgl-thumb.jpg',
+      '/textures/strcr-bgr-drgl-xxl-drgl-thumb.jpg',
+      '/textures/strcr-red-aero-lrg-aero-thumb.jpg',
+      '/textures/strcr-ver-drgl-xxl-drgl-thumb.jpg',
+      '/textures/strge-orn-drgl-xxl-drgl-thumb.jpg',
+      '/textures/strst-brw-drgl-xxl-drgl-thumb.jpg',
+      '/textures/strst-grn-drgl-xxl-drgl-thumb_2b2eca77-4145-460a-bbf5-4e08e493566d.jpg',
+      '/textures/theten-bw-drgl-lrg.jpg',
+      '/textures/unnamedfrench-org-drgl-lrg_7470c323-7b82-4f9e-a742-19e0ed29cd83.jpg',
+    ]
+    const packagedSet = new Set(PACKAGED_PLAYMAT_URLS)
+    const usedMats = new Set<string>()
+    // First pass: record already-chosen packaged mats
+    for (const player of this.state.players.values()) {
+      if (player.playmatUrl && packagedSet.has(player.playmatUrl)) {
+        usedMats.add(player.playmatUrl)
+      }
+    }
+    // Shuffle the available pool
+    const availableMats = PACKAGED_PLAYMAT_URLS.filter(u => !usedMats.has(u))
+    for (let i = availableMats.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availableMats[i], availableMats[j]] = [availableMats[j], availableMats[i]]
+    }
+    let matIdx = 0
+    // Second pass: assign to players who don't have one
+    for (const player of this.state.players.values()) {
+      if (!player.playmatUrl && matIdx < availableMats.length) {
+        player.playmatUrl = availableMats[matIdx++]
       }
     }
 

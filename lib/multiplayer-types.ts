@@ -78,6 +78,7 @@ export type ClientMessage =
   | { type: "scry"; count: number }
   | { type: "reveal_top"; count: number }
   | { type: "create_token"; name: string; power: number; toughness: number }
+  | { type: "log_action"; msg: string }
 
 // Room info from lobby listing
 export interface RoomInfo {

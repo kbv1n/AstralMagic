@@ -371,6 +371,7 @@ export function DiceModal({ mode, onRoll, onFlip, onLog, onClose }: DiceModalPro
       const r = onRoll(sides)
       setResult(r)
       setRolling(false)
+      onLog(`rolled ${r} on a d${sides}`)
     }, 600)
   }
 
@@ -381,6 +382,7 @@ export function DiceModal({ mode, onRoll, onFlip, onLog, onClose }: DiceModalPro
       const r = onFlip()
       setResult(r)
       setRolling(false)
+      onLog(`flipped ${r}`)
     }, 500)
   }
 

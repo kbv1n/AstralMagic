@@ -376,7 +376,12 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
       },
       onHover: (c: CardInstance) => setHover(c),
       onHL: () => setHover(null),
-      onZone: (zone: string) => setZV({ pid: p.pid, zone: zone as ZoneType }),
+      onZone: (zone: string) => {
+        if (isLocal(p.pid) && zone === 'library') {
+          GameActions.addLog(`${p.name} is looking at their library`)
+        }
+        setZV({ pid: p.pid, zone: zone as ZoneType })
+      },
       onHandCardMD: (e: React.MouseEvent, iid: string) => onHandCardMD(e, p.pid, iid),
       isHandDragOver: handDragOver === p.pid,
       matRef: (el: HTMLDivElement | null) => {
@@ -577,7 +582,10 @@ export function MultiplayerBoard({ mpState, localPlayerId, onLeave }: Props) {
           mode={diceModal}
           onRoll={(sides) => Math.floor(Math.random() * sides) + 1}
           onFlip={() => (Math.random() < 0.5 ? 'Heads' : 'Tails')}
-          onLog={() => {}}
+          onLog={(msg) => {
+            const name = players[localPid]?.name ?? 'A player'
+            GameActions.addLog(`${name} ${msg}`)
+          }}
           onClose={() => setDiceModal(null)}
         />
       )}

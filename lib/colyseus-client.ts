@@ -102,6 +102,7 @@ export const GameActions = {
   scry: (count: number) => sendMessage("scry", { count }),
   createToken: (name: string, power: number, toughness: number) =>
     sendMessage("create_token", { name, power, toughness }),
+  addLog: (msg: string) => sendMessage("log_action", { msg }),
 }
 
 // ---- Plain JSON State Parsing (bypasses schema serialization) ----

@@ -4,15 +4,15 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Swords, Copy, Check, Play, LogOut, Image as ImageIcon,
-  ChevronDown, ChevronUp, ExternalLink
+  ChevronDown, ChevronUp, ExternalLink, Link as LinkIcon, X
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PlayerSlot } from "./PlayerSlot"
 import { GameActions } from "@/lib/colyseus-client"
 import type { GameState, PlayerState } from "@/lib/multiplayer-types"
+import { PACKAGED_PLAYMATS, isPackagedPlaymat } from "@/lib/playmats"
 
 const MOXFIELD_URL = "https://moxfield.com/decks/public?q=eyJmb3JtYXQiOiJjb21tYW5kZXJQcmVjb25zIn0%3D"
 
@@ -25,8 +25,11 @@ interface LobbyScreenProps {
 export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenProps) {
   const [deckText, setDeckText] = useState("")
   const [playmatUrl, setPlaymatUrl] = useState("")
+  const [customUrl, setCustomUrl] = useState("")
+  const [showCustomInput, setShowCustomInput] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showDeckInput, setShowDeckInput] = useState(true)
+  const [showPlaymatPicker, setShowPlaymatPicker] = useState(true)
 
   const localPlayer = gameState.players.get(localPlayerId)
   const isHost = gameState.hostId === localPlayerId
@@ -59,10 +62,32 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
     }
   }
 
-  const handleSetPlaymat = () => {
-    if (playmatUrl.trim()) {
-      GameActions.setPlaymat(playmatUrl.trim())
-    }
+  // Packaged playmat URLs already taken by OTHER players
+  const takenPlaymats = new Set(
+    players
+      .filter(p => p.odId !== localPlayerId && isPackagedPlaymat(p.playmatUrl || ''))
+      .map(p => p.playmatUrl || '')
+  )
+
+  const handleSelectPlaymat = (url: string) => {
+    if (takenPlaymats.has(url)) return
+    setPlaymatUrl(url)
+    setShowCustomInput(false)
+    GameActions.setPlaymat(url)
+  }
+
+  const handleSetCustomUrl = () => {
+    const url = customUrl.trim()
+    if (!url) return
+    setPlaymatUrl(url)
+    GameActions.setPlaymat(url)
+    setShowCustomInput(false)
+  }
+
+  const handleClearPlaymat = () => {
+    setPlaymatUrl('')
+    setCustomUrl('')
+    GameActions.setPlaymat('')
   }
 
   const handleToggleReady = () => {
@@ -225,25 +250,123 @@ export function LobbyScreen({ gameState, localPlayerId, onLeave }: LobbyScreenPr
 
             {/* Playmat Section */}
             <div className="rounded-xl border border-border/50 bg-card p-4">
-              <h3 className="font-bold mb-3 flex items-center gap-2">
-                <ImageIcon className="w-4 h-4" />
-                Custom Playmat (Optional)
-              </h3>
-              <div className="flex gap-2">
-                <Input
-                  value={playmatUrl}
-                  onChange={(e) => setPlaymatUrl(e.target.value)}
-                  placeholder="https://example.com/playmat.jpg"
-                  className="flex-1 bg-background/50"
-                />
-                <Button
-                  onClick={handleSetPlaymat}
-                  disabled={!playmatUrl.trim()}
-                  variant="secondary"
-                >
-                  Set
-                </Button>
-              </div>
+              <button
+                onClick={() => setShowPlaymatPicker(!showPlaymatPicker)}
+                className="w-full flex items-center justify-between mb-3"
+              >
+                <h3 className="font-bold flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Choose Playmat
+                </h3>
+                {showPlaymatPicker ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {/* Current selection preview */}
+              {playmatUrl && (
+                <div className="mb-3 flex items-center gap-3 p-2 rounded-lg bg-background/40 border border-border/30">
+                  <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0 border border-white/10">
+                    <img
+                      src={playmatUrl}
+                      alt="Selected playmat"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground flex-1 truncate">
+                    {isPackagedPlaymat(playmatUrl)
+                      ? (PACKAGED_PLAYMATS.find(p => p.url === playmatUrl)?.name ?? 'Custom')
+                      : 'Custom URL'}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={handleClearPlaymat}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+
+              {showPlaymatPicker && (
+                <>
+                  {/* Packaged playmat grid */}
+                  <div className="grid grid-cols-4 gap-2 mb-3 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                    {PACKAGED_PLAYMATS.map((mat) => {
+                      const isSelected = playmatUrl === mat.url
+                      const isTaken = takenPlaymats.has(mat.url)
+                      return (
+                        <button
+                          key={mat.id}
+                          disabled={isTaken}
+                          onClick={() => handleSelectPlaymat(mat.url)}
+                          className={cn(
+                            "relative group flex flex-col items-center gap-1 rounded-lg p-1 border transition-all",
+                            isSelected
+                              ? "border-primary bg-primary/10 ring-1 ring-primary"
+                              : isTaken
+                              ? "border-border/20 opacity-40 cursor-not-allowed"
+                              : "border-border/30 hover:border-border/60 hover:bg-muted/50 cursor-pointer"
+                          )}
+                          title={isTaken ? `${mat.name} (taken)` : mat.name}
+                        >
+                          <div className="w-full aspect-video rounded overflow-hidden bg-muted">
+                            <img
+                              src={mat.thumb}
+                              alt={mat.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <span className="text-[9px] text-center text-muted-foreground leading-tight line-clamp-1 w-full">
+                            {mat.name}
+                          </span>
+                          {isTaken && (
+                            <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-background/40">
+                              <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wide">Taken</span>
+                            </div>
+                          )}
+                          {isSelected && (
+                            <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-primary flex items-center justify-center">
+                              <Check className="w-2 h-2 text-primary-foreground" />
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Custom URL toggle */}
+                  {!showCustomInput ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full h-8 text-xs gap-2 text-muted-foreground"
+                      onClick={() => setShowCustomInput(true)}
+                    >
+                      <LinkIcon className="w-3 h-3" />
+                      Use custom URL instead
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="custom-playmat-url"
+                        name="custom-playmat-url"
+                        value={customUrl}
+                        onChange={(e) => setCustomUrl(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSetCustomUrl(); if (e.key === 'Escape') setShowCustomInput(false) }}
+                        placeholder="https://example.com/playmat.jpg"
+                        className="flex-1 h-8 text-xs bg-background/50"
+                        autoFocus
+                      />
+                      <Button size="sm" className="h-8 text-xs" onClick={handleSetCustomUrl} disabled={!customUrl.trim()}>
+                        Set
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setShowCustomInput(false)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Ready / Start Section */}
