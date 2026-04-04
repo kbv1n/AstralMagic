@@ -1,5 +1,5 @@
 import { Room, Client } from "colyseus"
-import { Schema, type, ArraySchema, MapSchema } from "colyseus"
+import { Schema, type, ArraySchema, MapSchema } from "@colyseus/schema"
 import { GameState, PlayerState, CardState, CommanderDamage, ClientMessage } from "../schema/GameState"
 
 // Fisher-Yates shuffle
@@ -43,9 +43,12 @@ export class GameRoom extends Room<GameState> {
     // Check if game already started
     if (this.state.phase !== "lobby") {
       // Allow reconnection
-      const existingPlayer = Array.from(this.state.players.values()).find(
-        (p: PlayerState) => p.name === options.name && !p.connected
-      )
+      let existingPlayer: PlayerState | undefined
+      this.state.players.forEach((p) => {
+        if (p.name === options.name && !p.connected) {
+          existingPlayer = p
+        }
+      })
       if (existingPlayer) {
         existingPlayer.odId = client.sessionId
         existingPlayer.connected = true
@@ -530,7 +533,7 @@ export class GameRoom extends Room<GameState> {
   }
 
   setCardTapped(player: PlayerState, iid: string, tapped: boolean) {
-    const card = player.battlefield.find(c => c.iid === iid)
+    const card = player.battlefield.find((c: CardState) => c.iid === iid)
     if (card) {
       card.tapped = tapped
       this.addLog(`${player.name} ${tapped ? 'tapped' : 'untapped'} ${card.cardId}`)
@@ -541,7 +544,7 @@ export class GameRoom extends Room<GameState> {
     const zones = ["battlefield", "hand"] as const
     for (const zoneName of zones) {
       const zone = player[zoneName] as ArraySchema<CardState>
-      const card = zone.find(c => c.iid === iid)
+      const card = zone.find((c: CardState) => c.iid === iid)
       if (card) {
         card.faceDown = !card.faceDown
         this.addLog(`${player.name} flipped ${card.cardId} face ${card.faceDown ? 'down' : 'up'}`)
@@ -551,7 +554,7 @@ export class GameRoom extends Room<GameState> {
   }
 
   addCounter(player: PlayerState, iid: string, delta: number) {
-    const card = player.battlefield.find(c => c.iid === iid)
+    const card = player.battlefield.find((c: CardState) => c.iid === iid)
     if (card) {
       card.counters = Math.max(0, card.counters + delta)
       this.addLog(`${player.name} ${delta > 0 ? 'added' : 'removed'} counter on ${card.cardId} (${card.counters})`)

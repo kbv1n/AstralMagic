@@ -25,7 +25,7 @@ app.get("/health", (req, res) => {
 // List available rooms
 app.get("/rooms", async (req, res) => {
   try {
-    const rooms = await gameServer.matchMaker.query({ name: "game" })
+    const rooms = await (gameServer.matchMaker as any).query({ name: "game" })
     res.json(rooms.map((room: any) => ({
       roomId: room.roomId,
       clients: room.clients,
