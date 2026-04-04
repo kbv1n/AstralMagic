@@ -1,6 +1,10 @@
-# AstralMagic - MTG Commander Browser Game
+# AstralMagic — MTG Commander Multiplayer
 
-A sophisticated, fully-featured Magic: The Gathering Commander browser game designed for local pass-the-laptop multiplayer sessions. Built with Next.js 15 and featuring a modern liquid glass UI inspired by iOS design principles, real-time card management with Scryfall API integration, and comprehensive Commander format rules support.
+A full-featured, real-time Magic: The Gathering Commander browser game built for multiplayer play. Features a modern liquid glass UI, Scryfall API integration, and a Colyseus WebSocket server for synchronized game state across all players.
+
+> **Platform target:** PC and touchscreen monitors only. This project has no mobile optimisation and does not intend to add any.
+
+> **Dev note:** The singleplayer mode exists solely as a development shortcut to avoid lobby setup during testing. All features are designed for and intended to be used in multiplayer.
 
 ---
 
@@ -9,76 +13,75 @@ A sophisticated, fully-featured Magic: The Gathering Commander browser game desi
 1. [Overview](#overview)
 2. [Features](#features)
 3. [Technical Architecture](#technical-architecture)
-4. [Component Breakdown](#component-breakdown)
-5. [Data Layer](#data-layer)
-6. [State Management](#state-management)
-7. [API Integration](#api-integration)
-8. [UI/UX Design System](#uiux-design-system)
-9. [Game Mechanics Implementation](#game-mechanics-implementation)
-10. [Self-Hosting Guide](#self-hosting-guide)
-11. [Configuration](#configuration)
-12. [Controls Reference](#controls-reference)
-13. [Project Structure](#project-structure)
-14. [License & Credits](#license--credits)
+4. [Multiplayer Architecture](#multiplayer-architecture)
+5. [Component Breakdown](#component-breakdown)
+6. [Data Layer](#data-layer)
+7. [State Management](#state-management)
+8. [API Integration](#api-integration)
+9. [UI/UX Design System](#uiux-design-system)
+10. [Game Mechanics Implementation](#game-mechanics-implementation)
+11. [Self-Hosting Guide](#self-hosting-guide)
+12. [Configuration](#configuration)
+13. [Controls Reference](#controls-reference)
+14. [Project Structure](#project-structure)
+15. [Known Issues](#known-issues)
+16. [License & Credits](#license--credits)
 
 ---
 
 ## Overview
 
-AstralMagic is a browser-based implementation of Magic: The Gathering's Commander format, optimized for local multiplayer sessions where players pass a single device. The application provides a complete digital tabletop experience including:
-
-- Full card database access via Scryfall API
-- Interactive battlefield with drag-and-drop card manipulation
-- Comprehensive zone management (library, hand, battlefield, graveyard, exile, command zone)
-- Life total tracking with commander damage
-- Counter management for complex board states
-- Dice rolling and coin flipping utilities
-- Customizable UI with adjustable glass opacity, card scaling, and zoom levels
+AstralMagic is a browser-based Commander format game designed for real-time online play. Players import their decks via a Moxfield-compatible text format, choose a playmat, select their commander, and play on a shared synchronized board. All card positions, life totals, counters, zone movements, dice rolls, and game actions are broadcast in real time to all connected players.
 
 ---
 
 ## Features
 
 ### Core Gameplay
-- **2-6 Player Support** - Flexible player count for various Commander pod sizes
-- **Pass-the-Laptop Mode** - Seamless local multiplayer with player switching
-- **40 Life Starting Total** - Commander format default with adjustable settings
-- **Commander Damage Tracking** - Per-opponent damage counters (21 lethal threshold)
-- **Poison Counter Support** - Full infect mechanic tracking
+- **2–6 Player Multiplayer** — Real-time WebSocket sessions via Colyseus
+- **40 Life Starting Total** — Commander format default
+- **Commander Damage Tracking** — Per-opponent damage counters (21 lethal)
+- **Poison Counter Support** — Full infect mechanic tracking
+- **Turn Order** — Enforced server-side with pass-turn broadcasting
 
 ### Deck Management
-- **Deck Import** - Parse decklists from text (MTGO/Arena format supported)
-- **Scryfall Integration** - Automatic card data fetching with image caching
-- **Commander Selection** - Pre-game legendary creature designation
-- **Demo Mode** - Built-in 35-card demo deck for testing
+- **Deck Import** — Paste decklists in MTGO/Moxfield format (`1 Card Name` or `1 Card Name *CMDR*`)
+- **Scryfall Integration** — Automatic card data and image fetching with local cache
+- **Commander Selection** — Pre-game legendary creature designation
+- **Demo Mode** — Built-in 35-card demo deck for single-player dev testing
 
 ### Battlefield Interaction
-- **Drag-and-Drop Cards** - Smooth card positioning with collision detection
-- **Tap/Untap Mechanics** - Click to toggle, visual rotation indicator
-- **Pan and Zoom** - Spacebar + drag to pan, scroll wheel to zoom
-- **Card Counters** - +1/+1, -1/-1, loyalty, charge, poison, shield, lore, oil counters
-- **Token Generation** - Duplicate cards for token creation
-- **Face-Down Cards** - Morph/manifest support with hidden card backs
+- **Drag-and-Drop Cards** — Smooth card positioning from hand to battlefield
+- **Tap/Untap Mechanics** — Click to toggle; 90° visual rotation
+- **Pan and Zoom** — Spacebar + drag to pan, scroll wheel to zoom per-player
+- **Card Counters** — +1/+1, -1/-1, loyalty, charge, poison, shield, lore, oil
+- **Token Generation** — Create named tokens with custom power/toughness
+- **Face-Down Cards** — Morph/manifest support with hidden card backs
 
 ### Zone Management
-- **Library** - Draw, scry N, mill N, shuffle, search functionality
-- **Hand** - Dock-style fan display with hover magnification
-- **Graveyard** - Scrollable card list with search
-- **Exile** - Separate zone for removed cards
-- **Command Zone** - Commander casting with tax tracking
+- **Library** — Scry N, Mill N, Shuffle, Search with card back rendering
+- **Hand** — Dock-style display with hover magnification
+- **Graveyard / Exile** — Scrollable modal with zone transfer buttons
+- **Command Zone** — Commander casting with easy access
 
 ### Utilities
-- **Dice Roller** - D4, D6, D8, D10, D12, D20 with animated results
-- **Coin Flipper** - Heads/tails with visual animation
-- **Game Log** - Complete action history with timestamps
-- **Toast Notifications** - Life change alerts, turn announcements
+- **Dice Roller** — D4, D6, D8, D10, D12, D20, and custom sides; results broadcast to all players
+- **Coin Flipper** — Heads/tails; result broadcast to all players
+- **Action Log** — Server-side event log visible to all players; persists last 100 entries
+- **Library Peek Log** — Notifies all players when someone views their own library
 
-### Customization
-- **Custom Playmats** - Upload personal playmat images per player
-- **Glass Opacity** - Adjustable UI transparency (50-100%)
-- **Card Scale** - Battlefield card size adjustment (50-200%)
-- **Zoom Levels** - Per-player zoom state preservation
-- **Player Palettes** - Unique color themes per player position
+### Playmats
+- **26 Packaged Playmats** — Selectable from a thumbnail grid in the lobby
+- **Exclusivity** — Each packaged mat can only be assigned to one player at a time
+- **Auto-assign** — Players who skip selection receive a random mat when the game starts
+- **Custom URL** — Any player can override with a direct image link
+
+### UI / Customization
+- **Liquid Glass UI** — iOS-style backdrop blur panels throughout
+- **UI Scale** — Global interface scale adjustment
+- **Glass Opacity** — Adjustable panel transparency
+- **Player Palettes** — 8 muted per-player color themes for easy identification
+- **Magic Card Back** — All non-unique card backs render the official Magic: The Gathering card back image
 
 ---
 
@@ -87,44 +90,102 @@ AstralMagic is a browser-based implementation of Magic: The Gathering's Commande
 ### Framework Stack
 
 | Layer | Technology | Version |
-|-------|------------|---------|
+|---|---|---|
 | Framework | Next.js | 15.x |
 | Runtime | React | 19.x |
 | Language | TypeScript | 5.x |
 | Styling | Tailwind CSS | 4.x |
 | Components | shadcn/ui | Latest |
 | Icons | Lucide React | Latest |
-| API | Scryfall REST API | v1 |
+| Multiplayer | Colyseus | 0.15.x |
+| Card API | Scryfall REST API | v1 |
 
 ### Architecture Pattern
 
-The application follows a **single-page application (SPA)** pattern with client-side state management:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Browser Client                           │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  page.tsx — Root Router                                      ││
+│  │  ┌─────────────┐   ┌─────────────────────────────────────┐  ││
+│  │  │  SinglePlayer│   │  MultiplayerWrapper (Colyseus)       │  ││
+│  │  │  (dev only)  │   │  ┌──────────┐  ┌────────────────┐  │  ││
+│  │  │  page.tsx    │   │  │JoinScreen│  │  LobbyScreen   │  │  ││
+│  │  │  local state │   │  └──────────┘  └────────────────┘  │  ││
+│  │  └─────────────┘   │  ┌─────────────────────────────────┐│  ││
+│  │                    │  │     MultiplayerBoard              ││  ││
+│  │                    │  │  (mirrors server state via        ││  ││
+│  │                    │  │   state_sync WebSocket events)    ││  ││
+│  │                    │  └─────────────────────────────────┘│  ││
+│  │                    └─────────────────────────────────────┘  ││
+│  └─────────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────┘
+                              │ WebSocket (Colyseus)
+┌──────────────────────────────────────────────────────────────────┐
+│                       Colyseus Server                            │
+│  GameRoom.ts — authoritative state + message handler            │
+│  ┌──────────────────┐  ┌─────────────────┐  ┌────────────────┐ │
+│  │  PlayerState     │  │  syncState()     │  │  addLog()      │ │
+│  │  (per-session)   │  │  broadcast JSON  │  │  action log    │ │
+│  └──────────────────┘  └─────────────────┘  └────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Multiplayer Architecture
+
+### State Sync Strategy
+
+AstralMagic bypasses Colyseus's built-in schema serialization in favour of plain JSON broadcasts. After every mutation, the server calls:
+
+```typescript
+syncState() {
+  this.broadcast("state_sync", this.serializePlainState())
+}
+```
+
+All clients receive the full game state on every mutation. This is intentionally simple for a game with a small player count (2–6), and avoids the complexity of delta patching.
+
+### Message Flow
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        App Shell                             │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │                    Screen Router                         ││
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   ││
-│  │  │  Setup   │ │ Loading  │ │Commander │ │   Game   │   ││
-│  │  │  Screen  │ │  Screen  │ │  Select  │ │  Screen  │   ││
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘   ││
-│  └─────────────────────────────────────────────────────────┘│
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │                    Game State                            ││
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐                ││
-│  │  │ Players  │ │  Turn    │ │   Log    │                ││
-│  │  │  Array   │ │  State   │ │  Array   │                ││
-│  │  └──────────┘ └──────────┘ └──────────┘                ││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
+Client → sendMessage("move_card", { iid, toZone, x, y })
+       ↓
+Server → handleMessage() → moveCard() → addLog() → syncState()
+       ↓
+All Clients ← "state_sync" event ← full state JSON
 ```
 
-### Rendering Strategy
+### Client Message Types
 
-- **Client-Side Rendering** - All game logic executes in browser
-- **No Server State** - Fully offline-capable after initial load
-- **API Calls** - Scryfall fetches happen during deck loading phase only
+| Type | Payload | Effect |
+|---|---|---|
+| `move_card` | iid, toZone, x?, y?, index? | Move card between zones |
+| `tap_card` / `untap_card` | iid | Toggle tap state |
+| `flip_card` | iid | Toggle face-down |
+| `add_counter` | iid, delta | Modify counter value |
+| `draw_cards` | count | Draw from library |
+| `mill_cards` | count | Mill to graveyard |
+| `shuffle_library` | — | Randomise library order |
+| `change_life` | delta | Adjust life total |
+| `change_poison` | delta | Adjust poison counters |
+| `cmd_damage` | fromSessionId, delta | Commander damage |
+| `pass_turn` | — | Advance turn counter |
+| `untap_all` | — | Untap player's permanents |
+| `scry` | count | Log scry action |
+| `create_token` | name, power, toughness | Add token to battlefield |
+| `log_action` | msg | Broadcast arbitrary log entry |
+| `set_playmat` | url | Update playmat URL |
+| `set_color` | colorIndex | Set player colour |
+| `set_name` | name | Update display name |
+| `paste_deck` | deckText | Import deck |
+| `ready` / `unready` | — | Toggle ready state |
+| `start_game` | — | Host starts the game |
+
+### State Serialization
+
+`serializePlainState()` serializes the full room state to plain JSON for broadcasting. The client parses this in `parseGameState()` (`lib/colyseus-client.ts`) and `convertToPlayers()` (`MultiplayerBoard.tsx`) to produce the UI player array.
 
 ---
 
@@ -132,110 +193,63 @@ The application follows a **single-page application (SPA)** pattern with client-
 
 ### Core Components (`/components/game/`)
 
-#### `player-mat.tsx` - Player Battlefield
-The primary game surface for each player containing:
-- **Battlefield Zone** - Infinite canvas with pan/zoom controls
-- **Hand Display** - Dock-style card fan with hover magnification
-- **Zone Buttons** - Quick access to library, graveyard, exile, command
-- **Life Counter** - Inline +/- controls with color-coded thresholds
-- **Player Header** - Name, life, poison counters display
+#### `player-mat.tsx` — Player Battlefield
+The primary game surface for each player:
+- **Battlefield Zone** — Infinite canvas with pan/zoom controls
+- **Hand Display** — Dock-style card fan at the bottom of each mat
+- **Zone Buttons** — Quick access to library, graveyard, exile, command zone
+- **Life Counter** — Inline +/- controls with colour-coded thresholds
+- **Wheel Zoom** — Native `addEventListener('wheel', fn, { passive: false })` for `preventDefault()` support
 
-**Key Features:**
-- Wheel-based zoom with cursor-anchored scaling
-- Spacebar + drag panning with momentum
-- Per-player gradient backgrounds from palette
-- Responsive layout for main vs opponent views
+#### `center-divider.tsx` — Action Bar
+Central control hub at the midpoint of the battlefield:
+- Turn indicator, pass turn, draw, untap all
+- Dice roller, coin flip
+- Settings, action log toggle
+- Uses inline glass styles (not class-based) to preserve correct opacity
 
-#### `center-divider.tsx` - Action Bar
-Central control hub positioned at playmat intersection:
-- **Logo Branding** - "AstralMagic" gradient text
-- **Turn Indicator** - Active player highlight with glow effect
-- **Life Controls** - Main player +/- buttons with haptic-style feedback
-- **Action Buttons** - Draw, Untap All, Pass Turn
-- **Utility Buttons** - Settings, Log toggle, Dice, Coin flip
-- **Zoom Display** - Current zoom percentage
+#### `card-token.tsx` — Card Renderer
+Individual card on the battlefield:
+- `transform: rotate(90deg)` for tap — CSS `animation: forwards` fill mode was patched to be opacity-only to prevent override
+- Counter badges, summoning sickness indicator, face-down mode
 
-**Sub-bar Pattern:**
-- Draw 7 (opening hand) / Draw 1 (subsequent draws)
-- Untap All permanents
-- Pass Turn with automatic untap
+#### `card-image.tsx` — Image Components
+- `CardImage` — Scryfall image with error fallback
+- `CardBack` — Renders `/textures/Magic_card_back.webp` (official Magic card back)
 
-#### `card-token.tsx` - Card Renderer
-Individual card representation on battlefield:
-- **Image Display** - Scryfall image with fallback text
-- **Tap State** - 90-degree rotation with amber glow
-- **Counter Badges** - Bottom-aligned counter pills
-- **Summoning Sickness** - Orange "Z" indicator for creatures
-- **Face-Down Mode** - Card back image display
+#### `context-menu.tsx` — Right-Click Actions
+Zone transfer, tap, flip, counter, duplicate.
 
-**Dimensions:** Base 126x176px (doubled from standard 63x88 for retina)
+#### `zone-viewer.tsx` — Zone Modal
+Full-screen zone inspection with search, Scry N, Mill N, Shuffle. Library cards render face-down by default with a per-card reveal toggle.
 
-#### `context-menu.tsx` - Right-Click Actions
-Context-sensitive action menu:
-- **Tap/Untap** - Toggle card state
-- **Zone Transfers** - Move to hand, graveyard, exile, library
-- **Transform** - MDFC/DFC flip support
-- **Counters** - Open counter management modal
-- **Duplicate** - Create token copy
+#### `mana-symbols.tsx` — Mana Cost Display
+Parses `{X}` mana cost strings and renders coloured symbol circles or MTG Wiki SVG images.
 
-**Viewport Clamping:** Menu repositions to stay within visible area
-
-#### `zone-viewer.tsx` - Zone Modal
-Full-screen zone inspection:
-- **Card Grid** - Scrollable card thumbnails
-- **Search Filter** - Real-time name filtering
-- **Library Actions** - Scry N, Mill N, Shuffle, Search
-- **Card Actions** - Move to any zone via hover menu
-- **Reveal Toggle** - Show/hide face-down cards
-
-#### `mana-symbols.tsx` - Mana Cost Display
-Scryfall-style mana symbol rendering:
-- **Symbol Parsing** - Regex extraction of `{X}` patterns
-- **Image Mode** - MTG Wiki SVG symbols
-- **Fallback Mode** - Colored circle with text
-- **Oracle Text** - Inline symbol replacement in card text
-
-**Supported Symbols:** W, U, B, R, G, C, 0-10, X, Y, Z, hybrid, phyrexian
-
-#### `modals.tsx` - Modal Collection
-Utility modals for game actions:
+#### `modals.tsx` — Modal Collection
 
 | Modal | Purpose |
-|-------|---------|
+|---|---|
 | `CounterModal` | Add/remove card counters |
 | `CmdDmgModal` | Track commander damage per opponent |
-| `ScryModal` | Scry N with top/bottom sorting |
-| `DiceModal` | D4-D20 rolling with animation |
-| `UISettingsModal` | Card scale, zoom, glass opacity |
-| `Toast` | Temporary notification display |
+| `ScryModal` | Scry N with top/bottom sorting UI |
+| `DiceModal` | D4–D20 with animation; calls `onLog()` after result |
+| `UISettingsModal` | UI scale, glass opacity, playmat |
+| `Toast` | Temporary notification |
 
-#### `damage-toast.tsx` - Life Change Notifications
-Cumulative damage tracking with debounced display:
-- **Aggregation** - Multiple rapid changes combine
-- **Color Coding** - Player palette-based styling
-- **Auto-dismiss** - 800ms debounce timer
+### Multiplayer Components (`/components/multiplayer/`)
 
-### Supporting Components
+#### `MultiplayerWrapper.tsx`
+Manages the Colyseus room lifecycle: connecting, joining, leaving. Routes to `JoinScreen` → `LobbyScreen` → `MultiplayerBoard` based on connection state.
 
-#### `setup-screen.tsx` - Game Configuration
-Pre-game setup interface:
-- Player count selection (2-6)
-- Player name input
-- Deck import textarea
-- Playmat upload with fit options
-- Starting life adjustment
+#### `JoinScreen.tsx`
+Name input + host/join mode selection. Detects `?room=CODE` in URL and pre-fills the room code for invite links.
 
-#### `loading-screen.tsx` - Scryfall Fetch Progress
-Deck loading progress display:
-- Card count progress bar
-- Current card name display
-- Animated logo treatment
+#### `LobbyScreen.tsx`
+Pre-game lobby: player list, colour picker, deck import, playmat picker, ready/start controls.
 
-#### `commander-select.tsx` - Commander Designation
-Post-load commander selection:
-- Grid of legendary creatures
-- Multi-commander support (partners)
-- Ready state per player
+#### `MultiplayerBoard.tsx`
+The live game board. Receives `MPGameState` and `localPlayerId`, converts to `Player[]` via `convertToPlayers()`, and renders `PlayerMat` for each player. All actions call `GameActions.*` which sends messages to the Colyseus server.
 
 ---
 
@@ -243,189 +257,69 @@ Post-load commander selection:
 
 ### Type Definitions (`/lib/game-types.ts`)
 
-#### `CardData` - Scryfall Card Schema
-```typescript
-interface CardData {
-  name: string           // Card name
-  manaCost: string       // Mana cost string "{2}{U}{U}"
-  cmc: number           // Converted mana cost
-  typeLine: string      // Full type line
-  oracle: string        // Oracle text
-  power: string | null  // Power (creatures)
-  tough: string | null  // Toughness (creatures)
-  loyalty: string | null // Loyalty (planeswalkers)
-  rarity: string        // common/uncommon/rare/mythic
-  set: string           // Set code
-  isLegendary: boolean  // Legendary supertype
-  isCreature: boolean   // Creature type
-  isPlaneswalker: boolean
-  isLand: boolean
-  mdfc?: boolean        // Modal double-faced card
-  img: string | null    // Front image URL
-  imgBack?: string | null // Back image URL (MDFC)
-  backName?: string | null
-  backType?: string | null
-  backPower?: string | null
-  backTough?: string | null
-}
-```
+Core types used across both singleplayer (dev) and multiplayer UI layers.
 
-#### `CardInstance` - Game Card State
+#### `CardInstance`
 ```typescript
-interface CardInstance extends CardData {
+interface CardInstance {
   iid: string           // Unique instance ID
-  tapped: boolean       // Tap state
-  showBack: boolean     // Showing back face
-  faceDown: boolean     // Face-down (morph)
-  summonSick: boolean   // Summoning sickness
-  counters: Record<string, number>  // Counter types
+  name: string
+  img: string | null
+  tapped: boolean
+  showBack: boolean     // MDFC back face visible
+  faceDown: boolean     // Morph/manifest
+  counters: Record<string, number>
   x: number             // Battlefield X position (%)
   y: number             // Battlefield Y position (%)
-  z: number             // Z-index for stacking
+  z: number             // Stacking z-index
+  // ...card data fields
 }
 ```
 
-#### `Player` - Player State
+#### `Player`
 ```typescript
 interface Player {
-  pid: number           // Player index
-  name: string          // Display name
-  pal: PlayerPalette    // Color theme
-  life: number          // Life total
-  poison: number        // Poison counters
-  cmdDmg: Record<number, number>  // Commander damage per opponent
-  library: CardInstance[]
-  hand: CardInstance[]
-  battlefield: CardInstance[]
-  graveyard: CardInstance[]
-  exile: CardInstance[]
-  command: CardInstance[]
-  manaPool: Record<string, number>  // Floating mana
-  maxZ: number          // Z-index counter
-  isDemo: boolean       // Using demo deck
-  missed: number        // Cards not found
-  playmat: string       // Playmat image URL
+  pid: number
+  name: string
+  pal: PlayerPalette    // Colour theme
+  life: number
+  poison: number
+  cmdDmg: Record<number, number>
+  library / hand / battlefield / graveyard / exile / command: CardInstance[]
+  playmat: string       // Active playmat URL
   playmatFit: string    // CSS object-fit value
 }
 ```
 
-#### `GameState` - Global Game State
-```typescript
-interface GameState {
-  players: Player[]
-  turn: number          // Active player index
-  round: number         // Round counter
-  log: string[]         // Action log (newest first)
-}
-```
+### Playmats (`/lib/playmats.ts`)
 
-#### `PlayerPalette` - Visual Theme
+26 packaged playmat definitions with display names and `/textures/` paths. Used by `LobbyScreen` for the picker UI and referenced in `GameRoom.ts` `startGame()` for auto-assignment.
+
 ```typescript
-interface PlayerPalette {
-  accent: string        // Primary accent color
-  glow: string          // Glow effect color (rgba)
-  bg: string            // Background tint
-  border: string        // Border color
-  gradient?: string     // Battlefield gradient CSS
+interface Playmat {
+  id: string
+  name: string
+  url: string   // /textures/filename.webp
+  thumb: string // same as url (full res used as thumb)
 }
 ```
 
 ### Data Utilities (`/lib/game-data.ts`)
 
-#### Demo Data
-35 pre-embedded Commander staple cards for offline/demo play:
-- Sol Ring, Command Tower, Arcane Signet
-- Counterspell, Lightning Bolt, Swords to Plowshares
-- Cultivate, Cyclonic Rift, Wrath of God
-- And 26 more common EDH cards
-
-#### Scryfall Integration
-
-**`fetchScryfall(names, onProgress)`**
-Batch fetches card data from Scryfall Collection API:
-- 75 cards per request (API limit)
-- 110ms delay between batches (rate limiting)
-- Progress callback for UI updates
-- Response caching to prevent duplicate fetches
-
-**`lookupCard(name)`**
-Retrieves card from cache (demo or fetched):
-- Case-insensitive matching
-- Returns null for unknown cards
-
-**`parseDeck(text)`**
-Parses decklist text into card entries:
-- Supports MTGO/Arena format: `4 Lightning Bolt`
-- Section headers: Commander, Deck, Sideboard
-- Ignores comments (`//`, `#`)
-- Handles set codes: `4 Lightning Bolt (M11)`
-
-**`createCardInstance(data)`**
-Converts CardData to CardInstance:
-- Generates unique `iid` via crypto.randomUUID()
-- Initializes game state (untapped, no counters)
-- Random battlefield position
-
-**`parseManaProduction(card)`**
-Extracts mana production from oracle text:
-- Regex matches "Add {X}" patterns
-- Returns color -> count mapping
-- Handles "any color" with colorless fallback
+- **`fetchScryfall(names, onProgress)`** — Batch fetches from Scryfall Collection API (75 cards/req, 110ms delay)
+- **`lookupCard(name)`** — Cache lookup
+- **`parseDeck(text)`** — Parses MTGO/Moxfield format; `*CMDR*` marker for commanders
+- **`createCardInstance(data)`** — Initialises a CardInstance with a `crypto.randomUUID()` iid
 
 ---
 
 ## State Management
 
-### React State Architecture
+### Multiplayer
+All authoritative state lives on the Colyseus server. The client is a pure renderer — no local game state mutations. Every player action calls a `GameActions.*` function which `sendMessage()`s to the server. The server mutates its state and broadcasts the full serialized state to all connected clients via `state_sync`.
 
-The application uses React's built-in `useState` hooks for all state management, organized into logical groups:
-
-#### Screen State
-```typescript
-const [screen, setScreen] = useState<ScreenType>('setup')
-// 'setup' | 'loading' | 'commander-select' | 'game'
-```
-
-#### Game State
-```typescript
-const [game, setGame] = useState<GameState | null>(null)
-```
-
-#### UI State
-```typescript
-const [uiSettings, setUISettings] = useState({
-  cardScale: 1,
-  defaultZoom: 1,
-  showZoomPanel: true,
-  uiScale: 1,
-  glassOpacity: 0.85
-})
-```
-
-#### Per-Player State
-```typescript
-const [zooms, setZooms] = useState<Record<number, number>>({})
-const [pans, setPans] = useState<Record<number, { x: number; y: number }>>({})
-```
-
-### Mutation Pattern
-
-The `mut()` helper function provides immutable state updates:
-```typescript
-const mut = (fn: (g: GameState) => void) => {
-  setGame((prev) => {
-    if (!prev) return prev
-    const next = deepClone(prev)
-    fn(next)
-    return next
-  })
-}
-```
-
-This pattern:
-- Deep clones player arrays to prevent mutation
-- Allows imperative-style updates in callback
-- Maintains React's immutability requirements
+### Singleplayer (dev only)
+Client-side `useState` with a `mut()` deep-clone helper. Entirely local; no network.
 
 ---
 
@@ -433,33 +327,24 @@ This pattern:
 
 ### Scryfall API
 
-**Endpoint:** `https://api.scryfall.com/cards/collection`
+**Card Collection Endpoint:** `POST https://api.scryfall.com/cards/collection`
 
-**Method:** POST with JSON body
-
-**Request Format:**
+Request format:
 ```json
-{
-  "identifiers": [
-    { "name": "Lightning Bolt" },
-    { "name": "Counterspell" }
-  ]
-}
+{ "identifiers": [{ "name": "Lightning Bolt" }] }
 ```
 
-**Response Handling:**
-- `data[]` - Successfully found cards
-- `not_found[]` - Cards that couldn't be located
+Rate limiting: 75 cards/request, 110ms inter-batch delay.
 
-**Rate Limiting:**
-- 75 cards per request maximum
-- 100ms minimum delay between requests
-- Implemented via setTimeout between batches
+Image resolution: `image_uris.normal` (672×936px). MDFCs fall back to `card_faces[0].image_uris.normal`.
 
-**Image URLs:**
-- Uses `image_uris.normal` (672x936px)
-- Falls back to card_faces[0] for MDFCs
-- Cached in module-level object
+### Scryfall Symbol API
+
+**Symbology:** `GET https://api.scryfall.com/symbology`
+
+Returns all official MTG symbols with SVG URIs. Used for mana cost and oracle text rendering.
+
+> **Note:** The current `mana-symbols.tsx` uses MTG Wiki SVG paths as a fallback. Full Scryfall symbol API integration (for tap, energy, phyrexian, etc.) is a pending improvement — see `ISSUES.md`.
 
 ---
 
@@ -467,7 +352,7 @@ This pattern:
 
 ### Color Palette
 
-**Base Theme (Flat Space Indigo):**
+**Base Theme:**
 ```css
 --background: #2d3047    /* Space Indigo */
 --foreground: #edf5fc    /* Alice Blue */
@@ -477,61 +362,39 @@ This pattern:
 --border: #4a5070        /* Muted Indigo */
 ```
 
-**Player Palettes (Vibrant Flat Colors):**
+**Player Palettes (Muted):**
+
 | Player | Accent | Description |
-|--------|--------|-------------|
-| 1 | #f44a4a | Strawberry Red |
-| 2 | #fb8f23 | Dark Orange |
-| 3 | #fee440 | Banana Cream |
-| 4 | #7aff60 | Mint Glow |
-| 5 | #00f5d4 | Aquamarine |
-| 6 | #00bbf9 | Deep Sky Blue |
-| 7 | #9b5de5 | Lavender Purple |
-| 8 | #f15bb5 | Deep Pink |
+|---|---|---|
+| 1 | #c46b6b | Muted Rose Red |
+| 2 | #c48f5a | Muted Amber |
+| 3 | #b8a94e | Muted Gold |
+| 4 | #6db86a | Muted Sage Green |
+| 5 | #5aafa0 | Muted Teal |
+| 6 | #5a9abf | Muted Sky Blue |
+| 7 | #8a6bb8 | Muted Lavender |
+| 8 | #b86b96 | Muted Rose Pink |
 
 ### Glass Morphism System
 
-Four glass variants with CSS variable-controlled opacity (flat backgrounds):
+Four glass variants using CSS custom property `--glass-opacity`:
 
 ```css
-.liquid-glass {
-  backdrop-filter: blur(16px);
-  background: rgba(45, 48, 71, calc(var(--glass-opacity) * 0.85));
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.liquid-glass-subtle { /* 60% opacity base */ }
-.liquid-glass-strong { /* 100% opacity base */ }
-.liquid-glass-readable { /* 95% fixed for text contrast */ }
+.liquid-glass          { backdrop-filter: blur(16px); background: rgba(45,48,71, calc(var(--glass-opacity) * 0.85)); }
+.liquid-glass-subtle   { /* 60% base */ }
+.liquid-glass-strong   { /* 100% base */ }
+.liquid-glass-readable { /* 95% fixed — text contrast */ }
 ```
 
-**Design Philosophy:**
-- No gradients - all UI elements use flat, solid colors
-- Clean borders with subtle opacity for depth
-- High contrast player colors for easy identification
+Action bar uses inline styles directly (not class-based) to avoid opacity inheritance conflicts.
 
-### Typography
-
-- **Headings:** Geist Sans (system font stack fallback)
-- **Body:** Geist Sans
-- **Monospace:** Geist Mono (for numbers/stats)
-
-### Animation Classes
+### Animation
 
 ```css
+/* card-enter — opacity only; does NOT use transform to avoid overriding tap rotation */
 @keyframes card-enter {
-  from { opacity: 0; transform: scale(0.9) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px currentColor; }
-  50% { box-shadow: 0 0 16px currentColor, 0 0 24px currentColor; }
-}
-
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 ```
 
@@ -541,42 +404,21 @@ Four glass variants with CSS variable-controlled opacity (flat backgrounds):
 
 ### Turn Structure
 
-1. **Untap** - Automatic on turn start
-2. **Upkeep** - Manual triggers
-3. **Draw** - Manual via action bar
-4. **Main Phase** - Card playing
-5. **Combat** - Tap attackers
-6. **Main Phase 2** - Post-combat plays
-7. **End Step** - Pass turn button
-
-### Life Tracking
-
-- Click +/- buttons or use keyboard shortcuts
-- Cumulative damage toasts aggregate rapid changes
-- Critical warnings at 10 life and 0 life
-- Negative life supported (for effects like Phyrexian Unlife)
+Pass Turn advances the server-side turn counter and broadcasts to all clients. It does **not** untap — untapping is a separate explicit action ("Untap All") respecting optional untap skips.
 
 ### Card Tapping
 
-- **Click** (no drag) - Toggles tap state
-- **Tap** - 90-degree clockwise rotation
-- **Mana Production** - Auto-detected from oracle text and added to mana pool
+Click without drag toggles tap state. Tap = `transform: rotate(90deg)` applied as inline style. The `card-enter` animation is opacity-only to prevent the `forwards` fill mode from overriding the rotation.
 
 ### Zone Transfers
 
-All zone movements create new `iid` to prevent React key conflicts:
-```typescript
-card.iid = crypto.randomUUID()
-card.tapped = false
-card.summonSick = toZone === 'battlefield'
-```
+Moving a card out of any zone resets `tapped: false`. Summoning sickness is set when a card moves to the battlefield. Card `iid` is preserved across zone moves in multiplayer (server maintains the same iid).
 
 ### Commander Rules
 
-- **Commander Tax** - Not yet implemented (manual tracking)
-- **Commander Damage** - Per-opponent tracking via modal
-- **21 Damage** - Visual warning (manual game loss)
-- **Color Identity** - Displayed but not enforced
+- Commander damage tracked per-opponent via `CmdDmgModal`
+- Tax tracking: manual (not auto-enforced)
+- 21 damage threshold: visual warning (no auto-loss)
 
 ---
 
@@ -584,89 +426,62 @@ card.summonSick = toZone === 'battlefield'
 
 ### Prerequisites
 
-- Node.js 18+ 
-- pnpm (recommended) or npm/yarn
+- Node.js 18+
+- pnpm (recommended)
 
 ### Quick Start
 
 ```bash
-# Clone repository
-git clone <your-repo-url>
-cd astralmagic
+git clone <repo-url>
+cd AstralMagic
 
-# Install dependencies
+# Install client dependencies
 pnpm install
 
-# Start development server
+# Install server dependencies
+cd server && pnpm install && cd ..
+
+# Start Colyseus server (port 2567)
+cd server && pnpm dev &
+
+# Start Next.js client (port 3000)
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000) — multiplayer requires the server to be running.
+
+### Environment Variables
+
+```env
+# In .env.local (client)
+NEXT_PUBLIC_COLYSEUS_URL=ws://localhost:2567
+```
+
+For production, set `NEXT_PUBLIC_COLYSEUS_URL` to your hosted Colyseus server URL (e.g. `wss://yourdomain.com`).
 
 ### Production Build
 
 ```bash
-pnpm build
-pnpm start
+# Client
+pnpm build && pnpm start
+
+# Server
+cd server && pnpm build && node dist/index.js
 ```
-
-### Docker Deployment
-
-```dockerfile
-FROM node:20-alpine AS base
-
-FROM base AS deps
-WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
-
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN corepack enable pnpm && pnpm build
-
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-EXPOSE 3000
-CMD ["node", "server.js"]
-```
-
-```bash
-docker build -t astralmagic .
-docker run -p 3000:3000 astralmagic
-```
-
-### Vercel Deployment
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
-
-1. Push to GitHub
-2. Import in Vercel
-3. Deploy (zero configuration needed)
 
 ---
 
 ## Configuration
 
-### Environment Variables
-
-None required - the application runs entirely client-side.
-
-### UI Settings
+### UI Settings (Options Menu in-game)
 
 | Setting | Description | Range | Default |
-|---------|-------------|-------|---------|
-| Card Scale | Battlefield card size | 50-200% | 100% |
-| Default Zoom | Initial zoom level | 15-400% | 100% |
-| UI Scale | Overall interface scale | 50-150% | 100% |
-| Glass Opacity | Panel transparency | 50-100% | 85% |
-| Card Preview | Hover preview enabled | On/Off | On |
+|---|---|---|---|
+| UI Scale | Global interface scale | 50–150% | 100% |
+| Glass Opacity | Panel transparency | 50–100% | 85% |
+| Playmat | Current mat URL | — | Auto-assigned |
+
+> Card Scale and Default Zoom Scale have been removed from the options menu. Zoom is controlled per-player via scroll wheel; there is no global card scale.
 
 ---
 
@@ -675,27 +490,26 @@ None required - the application runs entirely client-side.
 ### Battlefield
 
 | Action | Control |
-|--------|---------|
+|---|---|
 | Move card | Click + drag |
-| Tap/Untap | Click (without drag) |
+| Tap / Untap | Click (no drag) |
 | Card menu | Right-click |
 | Pan view | Space + drag |
 | Zoom | Mouse wheel |
-| Reset view | Click zoom % |
 
 ### Hand
 
 | Action | Control |
-|--------|---------|
-| Play card | Drag to battlefield |
+|---|---|
+| Play to battlefield | Drag to battlefield |
 | View card | Hover (magnifies) |
 | Card menu | Right-click |
 
 ### Keyboard
 
 | Key | Action |
-|-----|--------|
-| Space | Hold to enable pan mode |
+|---|---|
+| Space | Hold for pan mode |
 | Escape | Close modals |
 
 ---
@@ -703,45 +517,58 @@ None required - the application runs entirely client-side.
 ## Project Structure
 
 ```
-astralmagic/
+AstralMagic/
 ├── app/
-│   ├── page.tsx              # Main game component (985 lines)
-│   ├── layout.tsx            # Root layout with metadata
-│   ├── globals.css           # Design tokens & glass effects
-│   └── global-error.tsx      # Error boundary
+│   ├── page.tsx                   # Root router + singleplayer (dev only)
+│   ├── layout.tsx
+│   ├── globals.css                # Design tokens, glass system, animations
+│   └── global-error.tsx
 ├── components/
 │   ├── game/
-│   │   ├── player-mat.tsx    # Player battlefield (500+ lines)
-│   │   ├── center-divider.tsx # Action bar (260 lines)
-│   │   ├── card-token.tsx    # Card renderer (95 lines)
-│   │   ├── card-image.tsx    # Image component with fallback
-│   │   ├── context-menu.tsx  # Right-click menu (120 lines)
-│   │   ├── zone-viewer.tsx   # Zone modal (200+ lines)
-│   │   ├── mana-symbols.tsx  # Mana cost display (130 lines)
-│   │   ├── modals.tsx        # Utility modals (650+ lines)
-│   │   ├── damage-toast.tsx  # Life change notifications
-│   │   ├── setup-screen.tsx  # Pre-game configuration
-│   │   ├── loading-screen.tsx # Deck loading progress
-│   │   ├── commander-select.tsx # Commander designation
-│   │   ├── game-log.tsx      # Action history
-│   │   ├── action-log-popdown.tsx # Collapsible log
-│   │   ├── turn-bar.tsx      # Turn indicator
-│   │   └── card-zoom.tsx     # Large card preview
-│   ├── ui/                   # shadcn/ui components
-│   └── theme-provider.tsx    # Dark mode support
+│   │   ├── player-mat.tsx         # Player battlefield surface
+│   │   ├── center-divider.tsx     # Action bar (pass turn, draw, dice, etc.)
+│   │   ├── card-token.tsx         # Card renderer (tap, counters, face-down)
+│   │   ├── card-image.tsx         # CardImage + CardBack (Magic_card_back.webp)
+│   │   ├── context-menu.tsx       # Right-click card menu
+│   │   ├── zone-viewer.tsx        # Zone modal (library, graveyard, exile, hand)
+│   │   ├── mana-symbols.tsx       # Mana cost + oracle text symbol rendering
+│   │   ├── modals.tsx             # CounterModal, DiceModal, ScryModal, etc.
+│   │   ├── damage-toast.tsx       # Cumulative life change toasts
+│   │   ├── action-log-popdown.tsx # Collapsible action log
+│   │   ├── setup-screen.tsx       # Singleplayer setup (dev only)
+│   │   ├── loading-screen.tsx     # Scryfall fetch progress
+│   │   ├── commander-select.tsx   # Commander designation screen
+│   │   └── card-zoom.tsx          # Large cursor-following card preview
+│   ├── multiplayer/
+│   │   ├── MultiplayerWrapper.tsx # Colyseus lifecycle + room state
+│   │   ├── MultiplayerBoard.tsx   # Live game board (reads server state)
+│   │   ├── LobbyScreen.tsx        # Pre-game lobby UI
+│   │   ├── JoinScreen.tsx         # Host/join + name entry
+│   │   └── PlayerSlot.tsx         # Lobby player row
+│   └── ui/                        # shadcn/ui primitives
 ├── lib/
-│   ├── game-types.ts         # TypeScript interfaces (110 lines)
-│   ├── game-data.ts          # Data utilities (250 lines)
-│   └── utils.ts              # cn() helper
+│   ├── game-types.ts              # Shared TypeScript interfaces
+│   ├── game-data.ts               # Scryfall fetch, deck parse, card cache
+│   ├── multiplayer-types.ts       # MP-specific types + ClientMessage union
+│   ├── colyseus-client.ts         # GameActions + room connection helpers
+│   ├── playmats.ts                # 26 packaged playmat definitions
+│   └── utils.ts                   # cn() Tailwind helper
 ├── hooks/
-│   ├── use-mobile.ts         # Mobile detection
-│   └── use-toast.ts          # Toast notifications
-├── public/                   # Static assets
-├── package.json
-├── tailwind.config.ts
-├── tsconfig.json
+│   └── use-mobile.ts              # Mobile detection hook (unused in MP)
+├── public/
+│   └── textures/                  # 26 playmat images + Magic_card_back.webp
+├── server/
+│   └── src/
+│       ├── rooms/GameRoom.ts      # Colyseus room: auth state + message handler
+│       └── schema/GameState.ts    # Colyseus schema + ClientMessage types
 └── README.md
 ```
+
+---
+
+## Known Issues
+
+See [`ISSUES.md`](./ISSUES.md) for a full in-depth analysis of all currently known bugs, their suspected root causes, and proposed solutions.
 
 ---
 
@@ -749,15 +576,15 @@ astralmagic/
 
 ### License
 
-MIT License - Free to use, modify, and distribute.
+MIT License — free to use, modify, and distribute.
 
 ### Credits
 
-- **Card Data & Images:** [Scryfall](https://scryfall.com/) - The MTG card database
-- **UI Components:** [shadcn/ui](https://ui.shadcn.com/) - Beautifully designed components
-- **Icons:** [Lucide](https://lucide.dev/) - Beautiful & consistent icon set
-- **Mana Symbols:** [MTG Wiki](https://mtg.fandom.com/) - Official symbol assets
-- **Framework:** [Next.js](https://nextjs.org/) by Vercel
+- **Card Data & Images:** [Scryfall](https://scryfall.com/)
+- **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
+- **Icons:** [Lucide](https://lucide.dev/)
+- **Multiplayer:** [Colyseus](https://colyseus.io/)
+- **Framework:** [Next.js](https://nextjs.org/)
 - **Styling:** [Tailwind CSS](https://tailwindcss.com/)
 
 ---
